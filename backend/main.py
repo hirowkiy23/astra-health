@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import sqlite3
@@ -6,9 +7,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
+import httpx
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+load_dotenv(Path(__file__).parent / '.env')
 
 app = FastAPI(title='ASTRA API', description='Astronaut medical decision-support prototype', version='0.1.0')
 app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:3000', 'http://127.0.0.1:3000'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
@@ -32,7 +37,7 @@ class MedicalResponse(BaseModel):
     warning_signs: list[str]
     recommended_actions: list[str]
     requires_human_support: bool
-    mode: Literal['deterministic_demo', 'llm_grounded'] = 'deterministic_demo'
+    mode: str = 'deterministic_demo'
 
 
 def retrieve(message: str) -> list[dict]:
@@ -69,6 +74,74 @@ def build_response(message: str, level: dict, references: list[dict]) -> dict:
     return MedicalResponse(message=text, warning_signs=['Severe or worsening symptoms', 'New breathing difficulty, chest pain, confusion, fainting, or reduced responsiveness'], recommended_actions=actions, requires_human_support=level['requires_human_support']).model_dump()
 
 
+def extract_json(text: str) -> dict | None:
+    """Parse a model reply that should be JSON, tolerating code fences or surrounding prose."""
+    if not text:
+        return None
+    cleaned = re.sub(r'^```(?:json)?\s*|\s*```$', '', text.strip())
+    try:
+        value = json.loads(cleaned)
+        return value if isinstance(value, dict) else None
+    except json.JSONDecodeError:
+        match = re.search(r'\{.*\}', cleaned, re.S)
+        if not match:
+            return None
+        try:
+            value = json.loads(match.group(0))
+            return value if isinstance(value, dict) else None
+        except json.JSONDecodeError:
+            return None
+
+
+SYSTEM_PROMPT = """You are ASTRA, a medical decision-support assistant for astronauts on isolated missions.
+You do not diagnose, prescribe, or select treatments. You explain background information from the supplied references only.
+You must never contradict, downgrade, or reinterpret the supplied triage result, and you never claim the triage result is wrong.
+Never invent citations: use only the references provided, and if none are relevant, say that no matching reference was found.
+Keep the message under 120 words, plain and calm. Return JSON only with exactly these keys:
+{"message": string, "warning_signs": string[], "recommended_actions": string[], "requires_human_support": boolean}
+requires_human_support must be true whenever the triage result requires human support."""
+
+
+async def generate_llm_response(message: str, level: dict, references: list[dict], fallback: dict) -> tuple[dict, str]:
+    """Return (response_dict, mode). Any failure falls back to the deterministic text."""
+    api_key = os.getenv('LLM_API_KEY')
+    if not api_key:
+        return fallback, 'deterministic_demo'
+    base_url = os.getenv('LLM_BASE_URL', 'https://api.cosmoshub.tech/v1').rstrip('/')
+    model = os.getenv('LLM_MODEL', 'kimi-k3.1-pro')
+    context = [
+        {'role': 'system', 'content': SYSTEM_PROMPT},
+        {'role': 'user', 'content': json.dumps({
+            'reported_concern': message,
+            'triage': {'level': level['level'], 'reason': level['reason'], 'requires_human_support': level['requires_human_support']},
+            'astronaut': {'baseline': PROFILE['baseline'], 'allergies': PROFILE['allergies']},
+            'vitals': VITALS,
+            'references': [{'title': r['title'], 'source': r['source'], 'excerpt': r['text']} for r in references],
+        })},
+    ]
+    try:
+        async with httpx.AsyncClient(timeout=25) as client:
+            response = await client.post(
+                f'{base_url}/chat/completions',
+                headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+                json={'model': model, 'messages': context, 'temperature': 0.2, 'max_tokens': 700},
+            )
+        response.raise_for_status()
+        content = response.json()['choices'][0]['message']['content']
+        parsed = extract_json(content)
+        if not parsed or not isinstance(parsed.get('message'), str):
+            return fallback, 'llm_error_fallback'
+        return {
+            'message': parsed['message'],
+            'warning_signs': parsed.get('warning_signs') if isinstance(parsed.get('warning_signs'), list) else fallback['warning_signs'],
+            'recommended_actions': parsed.get('recommended_actions') if isinstance(parsed.get('recommended_actions'), list) else fallback['recommended_actions'],
+            'requires_human_support': bool(parsed.get('requires_human_support')),
+            'mode': 'llm_grounded',
+        }, 'llm_grounded'
+    except Exception:
+        return fallback, 'llm_error_fallback'
+
+
 def enforce_triage_safety(response: dict, level: dict) -> dict:
     """The deterministic result owns escalation; model text may never lower it."""
     if not level.get('requires_human_support'):
@@ -78,19 +151,22 @@ def enforce_triage_safety(response: dict, level: dict) -> dict:
     original = safe.get('message', '')
     safe['message'] = original if 'human medical support' in original.lower() else 'Contact human medical support now. ' + original
     actions = list(dict.fromkeys(safe.get('recommended_actions', [])))
-    if 'Activate the applicable approved mission emergency procedure.' not in actions:
-        actions.insert(0, 'Activate the applicable approved mission emergency procedure.')
-    # Keep one procedural action when wording differs only by "applicable"/"approved".
-    def normalize(action: str) -> str:
-        return action.lower().replace('applicable ', '').replace('approved ', '').strip()
-    deduped: list[str] = []
-    seen: set[str] = set()
-    for action in actions:
-        key = normalize(action)
-        if key not in seen:
-            seen.add(key)
-            deduped.append(action)
-    safe['recommended_actions'] = deduped
+    if level.get('level') == 'red':
+        if 'Activate the applicable approved mission emergency procedure.' not in actions:
+            actions.insert(0, 'Activate the applicable approved mission emergency procedure.')
+        # Keep one procedural action when wording differs only by "applicable"/"approved".
+        def normalize(action: str) -> str:
+            return action.lower().replace('applicable ', '').replace('approved ', '').strip()
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for action in actions:
+            key = normalize(action)
+            if key not in seen:
+                seen.add(key)
+                deduped.append(action)
+        safe['recommended_actions'] = deduped
+    else:
+        safe['recommended_actions'] = actions
     if not safe.get('warning_signs'):
         safe['warning_signs'] = ['Severe or worsening symptoms', 'New breathing difficulty, chest pain, confusion, fainting, or reduced responsiveness']
     return safe
@@ -114,7 +190,7 @@ def save_incident(astronaut_id: str, consultation_id: str, message: str, level: 
 
 @app.get('/api/health')
 def health_check():
-    return {'status': 'operational', 'mode': 'local_demo', 'llm_connected': False}
+    return {'status': 'operational', 'mode': 'llm' if os.getenv('LLM_API_KEY') else 'local_demo', 'model': os.getenv('LLM_MODEL', 'kimi-k3.1-pro') if os.getenv('LLM_API_KEY') else None, 'llm_connected': bool(os.getenv('LLM_API_KEY'))}
 
 
 @app.get('/api/health/summary')
@@ -133,14 +209,21 @@ def vitals():
 
 
 @app.post('/api/consultation/message')
-def consultation(request: MessageRequest):
+async def consultation(request: MessageRequest):
     if request.astronaut_id != PROFILE['id']:
         raise HTTPException(status_code=404, detail='Demo astronaut not found')
     message = re.sub(r'\s+', ' ', request.message).strip()
     documents = retrieve(message)
     level = triage(message, VITALS)
-    response = build_response(message, level, documents)
-    response = enforce_triage_safety(response, level)
+    fallback = build_response(message, level, documents)
+    # The model explains; it never owns urgency. A red result short-circuits generation.
+    if level['level'] == 'red':
+        response = enforce_triage_safety(fallback, level)
+        mode = 'deterministic_demo'
+    else:
+        draft, mode = await generate_llm_response(message, level, documents, fallback)
+        response = enforce_triage_safety(draft, level)
+        response['mode'] = mode
     consultation_id = request.consultation_id or 'CON-' + uuid.uuid4().hex[:8].upper()
     incident_id = save_incident(request.astronaut_id, consultation_id, message, level, response)
     return {'response': response, 'triage': level, 'references': documents, 'incident_id': incident_id, 'consultation_id': consultation_id, 'simulated': True}

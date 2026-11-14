@@ -16,6 +16,7 @@ def test_dashboard_returns_synthetic_profile_and_readings():
 
 def test_emergency_symptom_produces_immediate_red_triage_and_incident(tmp_path, monkeypatch):
     monkeypatch.setenv('ASTRA_DATA_DIR', str(tmp_path))
+    monkeypatch.delenv('LLM_API_KEY', raising=False)
     response = client.post('/api/consultation/message', json={
         'astronaut_id': 'demo-001', 'message': 'I have severe chest pain and trouble breathing'
     })
@@ -33,6 +34,7 @@ def test_emergency_symptom_produces_immediate_red_triage_and_incident(tmp_path, 
 
 def test_ambiguous_dizziness_is_yellow_with_source_and_followup(tmp_path, monkeypatch):
     monkeypatch.setenv('ASTRA_DATA_DIR', str(tmp_path))
+    monkeypatch.delenv('LLM_API_KEY', raising=False)
     response = client.post('/api/consultation/message', json={
         'astronaut_id': 'demo-001', 'message': 'I feel dizzy after the gravity transition'
     })
@@ -48,6 +50,7 @@ def test_ambiguous_dizziness_is_yellow_with_source_and_followup(tmp_path, monkey
 
 def test_no_matching_reference_is_transparent(tmp_path, monkeypatch):
     monkeypatch.setenv('ASTRA_DATA_DIR', str(tmp_path))
+    monkeypatch.delenv('LLM_API_KEY', raising=False)
     response = client.post('/api/consultation/message', json={
         'astronaut_id': 'demo-001', 'message': 'Can we play chess tomorrow?'
     })
