@@ -22,7 +22,24 @@ const EMERGENCY_TERMS = [
   "can't breathe", 'cannot breathe', 'unconscious', 'unresponsive', 'severe bleeding',
 ];
 
-const SYMPTOM_TERMS = ['dizzy', 'dizziness', 'nausea', 'headache', 'faint', 'unsteady'];
+// Critical radiation self-reports. Kept separate from the symptom terms below
+// because radiation hazard reporting must escalate to red rather than yellow.
+const CRITICAL_RADIATION_TERMS = [
+  'radiation sickness', 'acute radiation', 'high radiation', 'severe radiation',
+  'radiation poisoning', 'radiation burns', 'vomiting after radiation',
+];
+
+const SYMPTOM_TERMS = ['dizzy', 'dizziness', 'nausea', 'headache', 'faint', 'unsteady', 'radiation', 'solar flare', 'solar particle'];
+
+// Questions about a hazard are not self-reports; they must not be mistaken for symptoms.
+const QUESTION_PATTERNS = [
+  /^what\b/, /^why\b/, /^how\b/, /^explain\b/, /^tell me\b/, /^describe\b/,
+  /\brisks?\b.*\?$/, /\?$/,
+];
+
+function isQuestion(text: string): boolean {
+  return QUESTION_PATTERNS.some(pattern => pattern.test(text));
+}
 
 export function triage(message: string, vitals: Vitals): TriageResult {
   const text = message.toLowerCase();
@@ -34,6 +51,15 @@ export function triage(message: string, vitals: Vitals): TriageResult {
       reason: `Illustrative critical vital-sign rule matched (${readings.join(', ')}). Activate the approved mission emergency procedure and contact human medical support immediately. Confirm the reading if the approved procedure calls for it.`,
       requires_human_support: true,
       rule_id: 'DEMO-VITAL-CRITICAL-01',
+      validated: false,
+    };
+  }
+  if (CRITICAL_RADIATION_TERMS.some(term => text.includes(term))) {
+    return {
+      level: 'red',
+      reason: 'Illustrative critical radiation-exposure rule matched. Activate the approved mission radiation emergency procedure and contact human medical support immediately.',
+      requires_human_support: true,
+      rule_id: 'DEMO-RADIATION-CRITICAL-01',
       validated: false,
     };
   }
@@ -56,7 +82,7 @@ export function triage(message: string, vitals: Vitals): TriageResult {
       validated: false,
     };
   }
-  if (SYMPTOM_TERMS.some(term => text.includes(term))) {
+  if (SYMPTOM_TERMS.some(term => text.includes(term)) && !isQuestion(text)) {
     if (!vitals.recorded_at) {
       return {
         level: 'yellow',
@@ -66,11 +92,14 @@ export function triage(message: string, vitals: Vitals): TriageResult {
         validated: false,
       };
     }
+    const radiationReport = ['radiation', 'solar flare', 'solar particle'].some(term => text.includes(term));
     return {
       level: 'yellow',
-      reason: 'Illustrative symptom rule matched; further assessment is required. This is not a validated clinical triage result.',
+      reason: radiationReport
+        ? 'Illustrative radiation-exposure rule matched; further assessment is required. This is not a validated clinical triage result.'
+        : 'Illustrative symptom rule matched; further assessment is required. This is not a validated clinical triage result.',
       requires_human_support: true,
-      rule_id: 'DEMO-SYMPTOM-01',
+      rule_id: radiationReport ? 'DEMO-RADIATION-REVIEW-01' : 'DEMO-SYMPTOM-01',
       validated: false,
     };
   }
