@@ -7,3 +7,4 @@ def test_emergency_actions_are_not_duplicated():
     response = enforce_triage_safety(build_response('severe chest pain', RED, []), RED)
     assert len(response['recommended_actions']) == len(set(response['recommended_actions']))
     assert response['message'].count('human medical support') == 1
+    assert not any('Activate the approved mission' in a for a in response['recommended_actions'])

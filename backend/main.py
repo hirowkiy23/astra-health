@@ -80,12 +80,17 @@ def enforce_triage_safety(response: dict, level: dict) -> dict:
     actions = list(dict.fromkeys(safe.get('recommended_actions', [])))
     if 'Activate the applicable approved mission emergency procedure.' not in actions:
         actions.insert(0, 'Activate the applicable approved mission emergency procedure.')
-    # Remove near-duplicate procedural actions after normalization.
-    normalized = {a.lower().replace('the applicable ', '').replace('the approved ', '') for a in actions}
-    if len(normalized) != len(actions):
-        actions = [a for i, a in enumerate(actions) if a.lower().replace('the applicable ', '').replace('the approved ', '') not in
-                   {x.lower().replace('the applicable ', '').replace('the approved ', '') for x in actions[:i]}]
-    safe['recommended_actions'] = actions
+    # Keep one procedural action when wording differs only by "applicable"/"approved".
+    def normalize(action: str) -> str:
+        return action.lower().replace('applicable ', '').replace('approved ', '').strip()
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for action in actions:
+        key = normalize(action)
+        if key not in seen:
+            seen.add(key)
+            deduped.append(action)
+    safe['recommended_actions'] = deduped
     if not safe.get('warning_signs'):
         safe['warning_signs'] = ['Severe or worsening symptoms', 'New breathing difficulty, chest pain, confusion, fainting, or reduced responsiveness']
     return safe
