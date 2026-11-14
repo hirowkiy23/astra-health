@@ -58,6 +58,7 @@ npm run build
 | POST | `/api/triage/evaluate` | Deterministic triage only |
 | GET | `/api/incidents` | Incident history |
 | GET | `/api/incidents/{id}` | Single incident |
+| GET | `/api/incidents/{id}/report` | Incident report with vitals snapshot |
 
 ## Safety and scope
 
@@ -97,6 +98,8 @@ The UI is based on the Figma file [NASA Space Apps Challenge 2026](https://www.f
 - Content surfaces use the Figma source's navy radial background, cyan/teal borders, white Inter typography, and blue active tabs.
 - ASTRA's retrieval corpus includes summarized NASA HRP hazards, risks and ongoing research from the three supplied source URLs. These are research background, not treatment protocols.
 - The chat supports knowledge-base questions and incident reports, persists user and assistant turns in SQLite, restores the latest conversation after a page refresh, and resolves short follow-up questions using recent context.
+- The selected crew member's simulated vitals are sent to triage, which now escalates on critical or abnormal readings and on missing data; each incident stores a vitals snapshot.
+- The AI Risk tab includes an incident log that opens the stored rule, vitals, and recorded response for review.
 - `public/orbital-login.png` — image exported from the user's Figma file.
 
 The original Figma source has empty Radiation, Daily, and Fitness frames. Their application views, plus Environment and AI Risk, were designed in the same visual system and clearly label simulated data.

@@ -12,6 +12,7 @@ interface ConsultationBody {
   astronaut_id?: string;
   message?: string;
   consultation_id?: string;
+  vitals?: Partial<{ heart_rate: number; spo2: number; temperature: number; blood_pressure: string }>;
 }
 
 export async function POST(request: Request) {
@@ -42,7 +43,20 @@ export async function POST(request: Request) {
     ? prior.filter(m => m.role === 'user').slice(-1)[0]?.content ?? ''
     : '';
   const references = ownReferences.length ? ownReferences : retrieve(`${previousTopic} ${message}`);
-  const triageResult = triage(message, VITALS);
+
+  // Use the selected crew member's simulated readings when supplied; otherwise the demo profile.
+  const vitals = body.vitals
+    ? {
+        heart_rate: Number(body.vitals.heart_rate ?? VITALS.heart_rate),
+        spo2: Number(body.vitals.spo2 ?? VITALS.spo2),
+        temperature: Number(body.vitals.temperature ?? VITALS.temperature),
+        blood_pressure: body.vitals.blood_pressure ?? VITALS.blood_pressure,
+        recorded_at: VITALS.recorded_at,
+        simulated: true as const,
+      }
+    : VITALS;
+
+  const triageResult = triage(message, vitals);
   const fallback = buildFallbackResponse(message, triageResult, references);
 
   // Red emergencies never wait on a network call and never use generated prose.
@@ -50,7 +64,7 @@ export async function POST(request: Request) {
   if (triageResult.level === 'red') {
     response = enforceTriageSafety(fallback, triageResult);
   } else {
-    const generated = await generateLlmResponse(message, triageResult, references, fallback, VITALS, prior);
+    const generated = await generateLlmResponse(message, triageResult, references, fallback, vitals, prior);
     response = enforceTriageSafety(generated.response, triageResult);
     response.mode = generated.mode;
   }
@@ -58,9 +72,10 @@ export async function POST(request: Request) {
   const incidentId = saveIncident({
     astronautId, consultationId, symptoms: message,
     severity: triageResult.level, response: response.message, ruleId: triageResult.rule_id,
+    vitalsJson: JSON.stringify(vitals),
   });
   appendMessage(consultationId, astronautId, 'assistant', response.message, {
-    triage: triageResult, references, incident_id: incidentId, mode: response.mode,
+    response, triage: triageResult, references, incident_id: incidentId, consultation_id: consultationId,
   });
 
   return NextResponse.json({ response, triage: triageResult, references, incident_id: incidentId, consultation_id: consultationId, simulated: true });

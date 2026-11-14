@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { pressSos } from '@/lib/sos';
 import type { SosPhase } from '@/lib/sos';
+import IncidentLog from './incident-log';
 
 type Tab = 'Overview' | 'Physiological' | 'Radiation' | 'Daily' | 'Fitness' | 'Environment' | 'AI Risk';
 type Crew = { id: string; name: string; status: 'Good' | 'Review' | 'Critical'; weight: number; vitals: { heartRate: number; bloodPressure: string; temperature: number; spo2: number }; environment: { oxygen: number; carbonDioxide: number; temperature: number; pressure: number; humidity: number } };
@@ -66,7 +67,7 @@ export default function Dashboard() {
     setMessage(''); setBusy(true); setError('');
     setTurns(t => [...t, { role: 'user', text }]);
     try {
-      const r = await fetch('/api/consultation/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ astronaut_id: 'demo-001', message: text, consultation_id: consultationId }) });
+      const r = await fetch('/api/consultation/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ astronaut_id: 'demo-001', message: text, consultation_id: consultationId, vitals: { heart_rate: astronaut.vitals.heartRate, spo2: astronaut.vitals.spo2, temperature: astronaut.vitals.temperature, blood_pressure: astronaut.vitals.bloodPressure } }) });
       if (!r.ok) throw new Error();
       const result: Result = await r.json();
       setConsultationId(result.consultation_id);
@@ -135,6 +136,11 @@ export default function Dashboard() {
         </div>
       ) : tab === 'Physiological' ? (
         <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]"><BodyPanel astronaut={astronaut} physiological /><div className="grid gap-6"><Panel title="Latest Update"><div className="grid grid-cols-2 gap-3">{metrics.map(([label, value, unit]) => <VitalCard key={label} label={label} value={value} unit={unit} />)}</div></Panel><Panel title="Health Consultation"><p className="mb-5 text-sm leading-6 text-[#c1d9e3]">Report a symptom for independent triage and source-grounded guidance.</p><button onClick={() => setConsultOpen(true)} className="w-full rounded-xl bg-[#0876bf] px-5 py-3 font-bold">Open ASTRA consultation</button></Panel></div></div>
+      ) : tab === 'AI Risk' ? (
+        <div className="mt-7 space-y-6">
+          <FeatureTab tab={tab} onConsult={() => setConsultOpen(true)} />
+          <IncidentLog refreshKey={incidentCount} />
+        </div>
       ) : <FeatureTab tab={tab} onConsult={() => setConsultOpen(true)} />}
 
       <div className="mt-7 flex flex-wrap items-center justify-between gap-4 text-[11px] text-[#b2ccd8]"><p>ASTRA · Decision-support prototype · Not a medical device</p><button onClick={() => setConsultOpen(true)} className="rounded-full border border-[#44869c] px-5 py-2 font-semibold text-[#d2eaf1]">Ask ASTRA about a concern →</button></div>

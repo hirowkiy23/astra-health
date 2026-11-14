@@ -42,6 +42,7 @@ export interface IncidentRow {
   response: string;
   status: string;
   rule_id: string;
+  vitals_json: string | null;
   created_at: string;
 }
 
@@ -63,6 +64,7 @@ export function getDb(): Database.Database {
       response TEXT NOT NULL,
       status TEXT NOT NULL,
       rule_id TEXT NOT NULL,
+      vitals_json TEXT,
       created_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS chat_messages (
@@ -76,6 +78,11 @@ export function getDb(): Database.Database {
     );
     CREATE INDEX IF NOT EXISTS chat_messages_consultation ON chat_messages (consultation_id, id);
   `);
+  // Additive migration: existing demo databases predate the vitals snapshot column.
+  const columns = db.prepare('PRAGMA table_info(incidents)').all() as { name: string }[];
+  if (!columns.some(column => column.name === 'vitals_json')) {
+    db.exec('ALTER TABLE incidents ADD COLUMN vitals_json TEXT');
+  }
   return db;
 }
 
@@ -91,12 +98,13 @@ export interface NewIncident {
   severity: TriageLevel;
   response: string;
   ruleId: string;
+  vitalsJson?: string;
 }
 
 export function saveIncident(incident: NewIncident): string {
   const id = `INC-${randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()}`;
   getDb().prepare(
-    'INSERT INTO incidents VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO incidents (id, consultation_id, astronaut_id, severity, symptoms, response, status, rule_id, vitals_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
   ).run(
     id,
     incident.consultationId,
@@ -106,6 +114,7 @@ export function saveIncident(incident: NewIncident): string {
     incident.response,
     'open',
     incident.ruleId,
+    incident.vitalsJson ?? null,
     new Date().toISOString(),
   );
   return id;
@@ -113,7 +122,7 @@ export function saveIncident(incident: NewIncident): string {
 
 export function listIncidents(): IncidentRow[] {
   return getDb().prepare(
-    'SELECT id, consultation_id, astronaut_id, severity, symptoms, status, rule_id, created_at FROM incidents ORDER BY created_at DESC, rowid DESC',
+    'SELECT id, consultation_id, astronaut_id, severity, symptoms, status, rule_id, vitals_json, created_at FROM incidents ORDER BY created_at DESC, rowid DESC',
   ).all() as IncidentRow[];
 }
 
