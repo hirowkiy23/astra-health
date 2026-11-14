@@ -15,7 +15,8 @@ interface ScanResponse {
   simulated: boolean;
 }
 
-// Map each scan region onto the body-figure geometry (percent coordinates).
+// Map each scan region onto the body-figure geometry (percent coordinates,
+// converted to viewBox space inside the SVG so the markers scale with it).
 const REGION_SPOTS: Record<string, { x: number; y: number }> = {
   Cardiac: { x: 50, y: 34 },
   Pulmonary: { x: 50, y: 42 },
@@ -28,6 +29,9 @@ const REGION_SPOTS: Record<string, { x: number; y: number }> = {
   Gastrointestinal: { x: 50, y: 62 },
   Ocular: { x: 50, y: 7 },
 };
+
+const VIEW_W = 319;
+const VIEW_H = 582;
 
 /** Simulated 4D-scan body visualization. Illustrative only — not a diagnosis. */
 export default function ScanBody({ astronautId }: { astronautId: string }) {
@@ -56,28 +60,10 @@ export default function ScanBody({ astronautId }: { astronautId: string }) {
         {loading ? (
           <p className="text-sm text-[#c1d9e3]">Preparing scan…</p>
         ) : scan ? (
-          <>
-            <BodyFigure />
-            {scan.regions.map(r => {
-              const spot = REGION_SPOTS[r.region];
-              if (!spot) return null;
-              return (
-                <button
-                  key={r.region}
-                  type="button"
-                  onClick={() => setSelected(r)}
-                  className={`absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full ${r.status === 'watch' ? 'bg-[#e7b85f] shadow-[0_0_10px_#e7b85f]' : 'bg-[#51ce7a]'}`}
-                  style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
-                  title={`${r.region}: ${r.status === 'watch' ? 'flagged for review (illustrative)' : 'nominal (illustrative)'}`}
-                  aria-label={`${r.region} — ${r.status === 'watch' ? 'flagged for review' : 'nominal'}`}
-                />
-              );
-            })}
-            <div className="absolute right-5 top-7 h-[380px] w-16 border-r border-[#8bb5c3]/70">
-              {[0, 1, 2, 3, 4].map(i => <i key={i} className="absolute right-0 block h-px w-5 bg-[#8bb5c3]/70" style={{ top: i * 95 }} />)}
-              <span className="absolute -right-1 -top-6 text-xs font-semibold">height</span>
-            </div>
-          </>
+          <BodyFigure
+            regions={scan.regions}
+            onSelect={setSelected}
+          />
         ) : (
           <p className="text-sm text-[#c1d9e3]">No scan available.</p>
         )}
@@ -117,9 +103,15 @@ export default function ScanBody({ astronautId }: { astronautId: string }) {
   );
 }
 
-function BodyFigure() {
+function BodyFigure({ regions, onSelect }: { regions: Scan['regions']; onSelect: (r: Scan['regions'][number]) => void }) {
   return (
-    <svg width="319" height="582" viewBox="0 0 319 582" aria-label="Upright astronaut body model" role="img">
+    <svg
+      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+      className="h-auto w-full max-w-[319px]"
+      preserveAspectRatio="xMidYMid meet"
+      aria-label="Upright astronaut body model"
+      role="img"
+    >
       <g fill="#d9d9d9" fillOpacity=".1">
         <rect x="96" y="0" width="127" height="127" rx="50" />
         <rect x="74" y="140" width="170" height="214" rx="25" />
@@ -127,6 +119,41 @@ function BodyFigure() {
         <rect x="257" y="140" width="62" height="214" rx="25" />
         <rect x="74" y="368" width="79" height="214" rx="25" />
         <rect x="166" y="368" width="79" height="214" rx="25" />
+      </g>
+
+      {/* Region markers — inside the viewBox so they scale with the figure. */}
+      {regions.map(r => {
+        const spot = REGION_SPOTS[r.region];
+        if (!spot) return null;
+        const cx = (spot.x / 100) * VIEW_W;
+        const cy = (spot.y / 100) * VIEW_H;
+        return (
+          <g
+            key={r.region}
+            onClick={() => onSelect(r)}
+            style={{ cursor: 'pointer' }}
+            role="button"
+            aria-label={`${r.region} — ${r.status === 'watch' ? 'flagged for review' : 'nominal'}`}
+          >
+            <circle cx={cx} cy={cy} r="14" fill="transparent" />
+            <circle
+              cx={cx}
+              cy={cy}
+              r="5"
+              fill={r.status === 'watch' ? '#e7b85f' : '#51ce7a'}
+            />
+            {r.status === 'watch' && <circle cx={cx} cy={cy} r="9" fill="none" stroke="#e7b85f" strokeOpacity=".5" />}
+          </g>
+        );
+      })}
+
+      {/* Height ruler, scaled inside the viewBox. */}
+      <g>
+        <line x1={VIEW_W - 6} y1="40" x2={VIEW_W - 6} y2="420" stroke="#8bb5c3" strokeOpacity=".7" />
+        {[0, 1, 2, 3, 4].map(i => (
+          <line key={i} x1={VIEW_W - 14} y1={40 + i * 95} x2={VIEW_W - 6} y2={40 + i * 95} stroke="#8bb5c3" strokeOpacity=".7" />
+        ))}
+        <text x={VIEW_W - 22} y="30" fill="#c1d9e3" fontSize="11" textAnchor="end">height</text>
       </g>
     </svg>
   );

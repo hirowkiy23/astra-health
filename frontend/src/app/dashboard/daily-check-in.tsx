@@ -82,6 +82,10 @@ export default function DailyCheckIn({ astronautId }: { astronautId: string }) {
             <p className="mt-2 text-2xl font-bold text-white">76<span className="ml-1 text-xs font-semibold text-[#bad1dd]">%</span></p>
           </div>
         </div>
+        <div className="mt-5">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#a9c6d3]">7-day sleep trend</p>
+          <SleepChart />
+        </div>
         <p className="mt-4 text-xs text-[#9fc0cd]">Simulated actigraphy data · illustrative only.</p>
       </section>
 
@@ -238,4 +242,42 @@ function SummaryStat({ label, value, sub }: { label: string; value: string; sub:
 function moodLabel(mood: number): string {
   const labels = ['Very low', 'Low', 'Okay', 'Good', 'Excellent'];
   return labels[Math.min(4, Math.max(0, Math.round(mood) - 1))];
+}
+
+function SleepChart() {
+  // Dummy 7-day sleep-duration (hours) and quality (%) trend.
+  const duration = [6.2, 6.8, 5.9, 7.1, 6.5, 7.0, 6.7];
+  const quality = [68, 74, 62, 80, 71, 79, 76];
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const W = 500;
+  const H = 160;
+  const PAD = 22;
+  const stepX = (W - PAD * 2) / (duration.length - 1);
+
+  const yFor = (v: number, min: number, max: number) => H - PAD - ((v - min) / (max - min || 1)) * (H - PAD * 2);
+  const durMin = 5, durMax = 8;
+  const durPoints = duration.map((v, i) => `${PAD + i * stepX},${yFor(v, durMin, durMax)}`).join(' ');
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-40 w-full rounded-xl border border-[#85b8c2] bg-[#082739]" role="img" aria-label="7-day sleep trend chart">
+      {[0.25, 0.5, 0.75].map(f => (
+        <line key={f} x1={PAD} y1={H - PAD - f * (H - PAD * 2)} x2={W - PAD} y2={H - PAD - f * (H - PAD * 2)} stroke="#c6dde1" strokeOpacity=".2" />
+      ))}
+      {/* Quality as faint bars. */}
+      {quality.map((q, i) => {
+        const x = PAD + i * stepX;
+        const top = yFor(q, 0, 100);
+        const h = H - PAD - top;
+        return <rect key={i} x={x - 8} y={top} width={16} height={h} rx={3} fill="#6ac2d0" fillOpacity=".35" />;
+      })}
+      {/* Duration line. */}
+      <polyline points={durPoints} fill="none" stroke="#70df92" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+      {duration.map((v, i) => (
+        <circle key={i} cx={PAD + i * stepX} cy={yFor(v, durMin, durMax)} r="3" fill="#70df92" />
+      ))}
+      {days.map((d, i) => (
+        <text key={i} x={PAD + i * stepX} y={H - 4} fill="#426571" fontSize="10" textAnchor="middle">{d}</text>
+      ))}
+    </svg>
+  );
 }
