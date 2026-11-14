@@ -10,4 +10,11 @@ body { background: var(--background); color: var(--foreground); font-family: var
 .text-muted { color: #b4d3de; }
 button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
+.thinking-orbit { display: flex; align-items: center; gap: 5px; width: 32px; }
+.thinking-orbit i { display: block; width: 7px; height: 7px; border-radius: 50%; background: #78d2df; animation: thinking-pulse 1.2s ease-in-out infinite; }
+.thinking-orbit i:nth-child(2) { animation-delay: .15s; }
+.thinking-orbit i:nth-child(3) { animation-delay: .3s; }
+.thinking-dots { display: inline-block; animation: thinking-pulse 1.2s ease-in-out infinite; }
+@keyframes thinking-pulse { 0%, 100% { opacity: .3; transform: translateY(1px); } 50% { opacity: 1; transform: translateY(-2px); } }
+@media (prefers-reduced-motion: reduce) { .thinking-orbit i, .thinking-dots { animation: none; opacity: 1; } }
 ::selection { background: #286789; color: white; }

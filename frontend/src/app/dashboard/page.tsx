@@ -8,8 +8,8 @@ import type { SosPhase } from '@/lib/sos';
 type Tab = 'Overview' | 'Physiological' | 'Radiation' | 'Daily' | 'Fitness' | 'Environment' | 'AI Risk';
 type Crew = { id: string; name: string; status: 'Good' | 'Review' | 'Critical'; weight: number; vitals: { heartRate: number; bloodPressure: string; temperature: number; spo2: number }; environment: { oxygen: number; carbonDioxide: number; temperature: number; pressure: number; humidity: number } };
 type Reference = { id: string; title: string; section: string; source: string; url: string };
-type Result = { response: { message: string; warning_signs: string[]; recommended_actions: string[]; mode: string }; triage: { level: 'red' | 'yellow' | 'green'; reason: string }; references: Reference[]; incident_id: string };
-type Turn = { role: 'user' | 'assistant'; text: string; result?: Result };
+type Result = { response: { message: string; warning_signs: string[]; recommended_actions: string[]; mode: string }; triage: { level: 'red' | 'yellow' | 'green'; reason: string }; references: Reference[]; incident_id: string; consultation_id: string };
+type Turn = { role: 'user' | 'assistant'; text: string; result?: Result; timestamp?: string };
 type SosStatus = 'idle' | 'sending' | 'response' | 'resolved';
 
 const TABS: Tab[] = ['Overview', 'Physiological', 'Radiation', 'Daily', 'Fitness', 'Environment', 'AI Risk'];
@@ -31,6 +31,8 @@ export default function Dashboard() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [thinking, setThinking] = useState('Searching the NASA knowledge base');
+  const [consultationId, setConsultationId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [incidentCount, setIncidentCount] = useState(0);
   const chatEnd = useRef<HTMLDivElement>(null);
@@ -40,8 +42,22 @@ export default function Dashboard() {
     document.title = 'ASTRA — Mission health';
     fetch('/api/crew').then(r => r.json()).then(d => { if (d.crew?.length) setCrew(d.crew); }).catch(() => {});
     fetch('/api/incidents').then(r => r.json()).then(d => { if (Array.isArray(d)) setIncidentCount(d.length); }).catch(() => {});
+    const saved = localStorage.getItem('astra-consultation-id');
+    if (saved) {
+      setConsultationId(saved);
+      fetch(`/api/consultation/history?consultation_id=${encodeURIComponent(saved)}`)
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(d => { if (Array.isArray(d.turns)) setTurns(d.turns); })
+        .catch(() => { localStorage.removeItem('astra-consultation-id'); setConsultationId(null); });
+    }
   }, []);
-  useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [turns, consultOpen]);
+  useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [turns, consultOpen, busy]);
+  useEffect(() => {
+    if (!busy) return;
+    setThinking('Searching the NASA knowledge base');
+    const timer = setTimeout(() => setThinking('ASTRA is thinking and preparing a grounded answer'), 900);
+    return () => clearTimeout(timer);
+  }, [busy]);
 
   async function consult(event: React.FormEvent) {
     event.preventDefault();
@@ -50,9 +66,11 @@ export default function Dashboard() {
     setMessage(''); setBusy(true); setError('');
     setTurns(t => [...t, { role: 'user', text }]);
     try {
-      const r = await fetch('/api/consultation/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ astronaut_id: 'demo-001', message: text }) });
+      const r = await fetch('/api/consultation/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ astronaut_id: 'demo-001', message: text, consultation_id: consultationId }) });
       if (!r.ok) throw new Error();
       const result: Result = await r.json();
+      setConsultationId(result.consultation_id);
+      localStorage.setItem('astra-consultation-id', result.consultation_id);
       setTurns(t => [...t, { role: 'assistant', text: result.response.message, result }]);
       setIncidentCount(c => c + 1);
     } catch { setError('Consultation could not be completed. No assessment was produced.'); }
@@ -121,7 +139,7 @@ export default function Dashboard() {
 
       <div className="mt-7 flex flex-wrap items-center justify-between gap-4 text-[11px] text-[#b2ccd8]"><p>ASTRA · Decision-support prototype · Not a medical device</p><button onClick={() => setConsultOpen(true)} className="rounded-full border border-[#44869c] px-5 py-2 font-semibold text-[#d2eaf1]">Ask ASTRA about a concern →</button></div>
 
-      {consultOpen && <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#010d16]/75 p-3 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="ASTRA consultation"><section className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#398b98] bg-[#071e2d] shadow-2xl"><div className="flex items-center justify-between border-b border-[#86b5bf] p-5"><div><h2 className="text-xl font-bold">Consult ASTRA</h2><p className="mt-1 text-xs text-[#c1d9e3]">Triage is independent of AI · Every response is logged</p></div><button onClick={() => setConsultOpen(false)} className="grid h-9 w-9 place-items-center rounded-full border border-[#508499]" aria-label="Close consultation">✕</button></div><div className="min-h-[240px] flex-1 space-y-4 overflow-y-auto p-5">{turns.length === 0 && <p className="text-sm leading-6 text-[#c1d9e3]">Describe a health concern. This prototype provides decision support, not a diagnosis.</p>}{turns.map((t, i) => <div key={i}>{t.role === 'user' ? <p className="ml-auto max-w-[85%] rounded-xl bg-[#0a5a90] px-4 py-3 text-sm">{t.text}</p> : <div className="space-y-3"><div className={`rounded-xl border p-4 text-sm ${t.result?.triage.level === 'red' ? 'border-[#cb5d5d] bg-[#6a2024]/50' : t.result?.triage.level === 'yellow' ? 'border-[#c29343] bg-[#715221]/35' : 'border-[#448f6a] bg-[#1a553e]/35'}`}><b>TRIAGE · {t.result?.triage.level.toUpperCase()}</b><p className="mt-2 text-[#d3e7ee]">{t.result?.triage.reason}</p></div><p className="text-sm leading-6">{t.text}</p>{t.result?.response.recommended_actions.length ? <ul className="list-disc space-y-1 pl-5 text-sm text-[#d3e7ee]">{t.result.response.recommended_actions.map(a => <li key={a}>{a}</li>)}</ul> : null}{t.result?.references.map(r => <a key={r.id} href={r.url} target="_blank" rel="noreferrer" className="block rounded-lg border border-[#375d70] p-3 text-xs text-[#8fd5ef]">{r.title} · {r.source}</a>)}</div>}</div>)}{busy && <p className="text-sm text-[#c1d9e3]">Running deterministic triage and retrieving references…</p>}<div ref={chatEnd} /></div><form onSubmit={consult} className="border-t border-[#86b5bf] p-4"><div className="flex gap-3"><textarea value={message} onChange={e => setMessage(e.target.value)} rows={2} placeholder="Describe your symptoms or concern…" className="flex-1 resize-none rounded-xl border border-[#47788c] bg-[#082739] p-3 text-sm outline-none focus:border-[#7abacf]" /><button disabled={busy || !message.trim()} className="self-end rounded-xl bg-[#0b75b6] px-6 py-3 font-bold disabled:opacity-40">Send</button></div><p className="mt-2 text-[10px] text-[#acc8d4]">Synthetic data · Illustrative rules · {turns.at(-1)?.result?.response.mode.replace('_', ' ') || 'Decision support only'}</p></form></section></div>}
+      {consultOpen && <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#010d16]/75 p-3 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="ASTRA consultation"><section className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#398b98] bg-[#071e2d] shadow-2xl"><div className="flex items-center justify-between border-b border-[#86b5bf] p-5"><div><h2 className="text-xl font-bold">Consult ASTRA</h2><p className="mt-1 text-xs text-[#c1d9e3]">Ask questions or report incidents · Sources shown with each answer</p></div><button onClick={() => setConsultOpen(false)} className="grid h-9 w-9 place-items-center rounded-full border border-[#508499]" aria-label="Close consultation">✕</button></div><div className="min-h-[240px] flex-1 space-y-4 overflow-y-auto p-5">{turns.length === 0 && <div className="rounded-xl border border-[#398b98] bg-[#ffffff08] p-4"><p className="text-sm leading-6 text-[#d3e7ee]">Ask about spaceflight health, or describe an incident to log it and get an independent triage result.</p><div className="mt-4 flex flex-wrap gap-2">{['What are the risks of space radiation?', 'I feel dizzy after the gravity transition', 'What does NASA research say about sleep?'].map(q => <button key={q} onClick={() => setMessage(q)} className="rounded-full border border-[#47788c] px-3 py-1.5 text-xs text-[#c1d9e3] hover:bg-[#ffffff10]">{q}</button>)}</div></div>}{turns.map((t, i) => <div key={i}>{t.role === 'user' ? <p className="ml-auto max-w-[85%] rounded-xl bg-[#0a5a90] px-4 py-3 text-sm">{t.text}</p> : <div className="space-y-3"><div className={`rounded-xl border p-4 text-sm ${t.result?.triage.level === 'red' ? 'border-[#cb5d5d] bg-[#6a2024]/50' : t.result?.triage.level === 'yellow' ? 'border-[#c29343] bg-[#715221]/35' : 'border-[#448f6a] bg-[#1a553e]/35'}`}><b>TRIAGE · {t.result?.triage.level.toUpperCase()}</b><p className="mt-2 text-[#d3e7ee]">{t.result?.triage.reason}</p></div><p className="text-sm leading-6">{t.text}</p>{t.result?.response.recommended_actions.length ? <ul className="list-disc space-y-1 pl-5 text-sm text-[#d3e7ee]">{t.result.response.recommended_actions.map(a => <li key={a}>{a}</li>)}</ul> : null}{t.result?.references.map(r => <a key={r.id} href={r.url} target="_blank" rel="noreferrer" className="block rounded-lg border border-[#375d70] p-3 text-xs text-[#8fd5ef]">{r.title} · {r.source}</a>)}</div>}</div>)}{busy && <div className="rounded-xl border border-[#398b98] bg-[#10394a] p-4" role="status" aria-live="polite"><div className="flex items-center gap-3"><div className="thinking-orbit" aria-hidden="true"><i /><i /><i /></div><div><p className="text-sm font-semibold text-white">{thinking}<span className="thinking-dots" aria-hidden="true">...</span></p><p className="mt-1 text-xs text-[#bdd6e2]">The answer will appear here when processing is complete.</p></div></div></div>}<div ref={chatEnd} /></div><form onSubmit={consult} className="border-t border-[#86b5bf] p-4"><div className="flex gap-3"><textarea value={message} onChange={e => setMessage(e.target.value)} rows={2} placeholder="Ask a question or report an incident…" className="flex-1 resize-none rounded-xl border border-[#47788c] bg-[#082739] p-3 text-sm text-white outline-none placeholder:text-[#a7c4d2] focus:border-[#7abacf]" /><button disabled={busy || !message.trim()} className="self-end rounded-xl bg-[#0b75b6] px-6 py-3 font-bold disabled:opacity-40">Send</button></div><p className="mt-2 text-[10px] text-[#acc8d4]">Synthetic data · Illustrative rules · {turns.at(-1)?.result?.response.mode.replace('_', ' ') || 'Decision support only'}</p></form></section></div>}
     </main>
   );
 }

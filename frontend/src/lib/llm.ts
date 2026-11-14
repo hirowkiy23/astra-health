@@ -8,6 +8,7 @@ const SYSTEM_PROMPT = `You are ASTRA, a medical decision-support assistant for a
 You do not diagnose, prescribe, or select treatments. You explain background information from the supplied references only.
 You must never contradict, downgrade, or reinterpret the supplied triage result, and you never claim the triage result is wrong.
 Never invent citations: use only the references provided, and if none are relevant, say that no matching reference was found.
+The user may ask general knowledge-base questions or report an incident. Answer follow-up questions using conversation_history, but do not treat prior messages as new emergencies.
 Keep the message under 120 words, plain and calm. Return JSON only with exactly these keys:
 {"message": string, "warning_signs": string[], "recommended_actions": string[], "requires_human_support": boolean}
 requires_human_support must be true whenever the triage result requires human support.`;
@@ -27,6 +28,7 @@ export async function generateLlmResponse(
   references: Reference[],
   fallback: MedicalResponse,
   vitals: Vitals = VITALS,
+  history: { role: string; content: string }[] = [],
 ): Promise<LlmResult> {
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) return { response: fallback, mode: 'deterministic_demo' };
@@ -40,6 +42,7 @@ export async function generateLlmResponse(
     astronaut: { baseline: PROFILE.baseline, allergies: PROFILE.allergies },
     vitals,
     references: references.map(r => ({ title: r.title, source: r.source, excerpt: r.text })),
+    conversation_history: history.map(m => ({ role: m.role, content: m.content })),
   };
 
   try {

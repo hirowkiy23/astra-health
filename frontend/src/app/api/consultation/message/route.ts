@@ -5,7 +5,7 @@ import { retrieve } from '@/lib/retrieval';
 import { enforceTriageSafety } from '@/lib/safety';
 import { buildFallbackResponse } from '@/lib/fallback';
 import { generateLlmResponse } from '@/lib/llm';
-import { saveIncident } from '@/lib/db';
+import { saveIncident, appendMessage, listMessages } from '@/lib/db';
 import { PROFILE, VITALS } from '@/lib/demo-data';
 
 interface ConsultationBody {
@@ -28,14 +28,20 @@ export async function POST(request: Request) {
   }
 
   const message = (body.message ?? '').replace(/\s+/g, ' ').trim();
-  if (!message) {
-    return NextResponse.json({ detail: 'Message is required' }, { status: 422 });
-  }
-  if (message.length > 4000) {
-    return NextResponse.json({ detail: 'Message too long' }, { status: 422 });
-  }
+  if (!message) return NextResponse.json({ detail: 'Message is required' }, { status: 422 });
+  if (message.length > 4000) return NextResponse.json({ detail: 'Message too long' }, { status: 422 });
 
-  const references = retrieve(message);
+  const consultationId = body.consultation_id ?? `CON-${randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()}`;
+  appendMessage(consultationId, astronautId, 'user', message);
+  const prior = listMessages(consultationId, 10).slice(0, -1);
+
+  // Use the previous user topic only when this short follow-up has no retrieval hits.
+  const followUp = /^(what|why|how|tell me|and|also|explain|does|is|can|should)\b/i.test(message) && message.length < 180;
+  const ownReferences = retrieve(message);
+  const previousTopic = followUp && prior.length
+    ? prior.filter(m => m.role === 'user').slice(-1)[0]?.content ?? ''
+    : '';
+  const references = ownReferences.length ? ownReferences : retrieve(`${previousTopic} ${message}`);
   const triageResult = triage(message, VITALS);
   const fallback = buildFallbackResponse(message, triageResult, references);
 
@@ -44,27 +50,18 @@ export async function POST(request: Request) {
   if (triageResult.level === 'red') {
     response = enforceTriageSafety(fallback, triageResult);
   } else {
-    const generated = await generateLlmResponse(message, triageResult, references, fallback, VITALS);
+    const generated = await generateLlmResponse(message, triageResult, references, fallback, VITALS, prior);
     response = enforceTriageSafety(generated.response, triageResult);
     response.mode = generated.mode;
   }
 
-  const consultationId = body.consultation_id ?? `CON-${randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()}`;
   const incidentId = saveIncident({
-    astronautId,
-    consultationId,
-    symptoms: message,
-    severity: triageResult.level,
-    response: response.message,
-    ruleId: triageResult.rule_id,
+    astronautId, consultationId, symptoms: message,
+    severity: triageResult.level, response: response.message, ruleId: triageResult.rule_id,
+  });
+  appendMessage(consultationId, astronautId, 'assistant', response.message, {
+    triage: triageResult, references, incident_id: incidentId, mode: response.mode,
   });
 
-  return NextResponse.json({
-    response,
-    triage: triageResult,
-    references,
-    incident_id: incidentId,
-    consultation_id: consultationId,
-    simulated: true,
-  });
+  return NextResponse.json({ response, triage: triageResult, references, incident_id: incidentId, consultation_id: consultationId, simulated: true });
 }

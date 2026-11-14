@@ -4,6 +4,35 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { TriageLevel } from './triage.ts';
 
+export interface ChatMessage {
+  id: number;
+  consultation_id: string;
+  astronaut_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  metadata: string | null;
+  created_at: string;
+}
+
+export function appendMessage(
+  consultationId: string,
+  astronautId: string,
+  role: 'user' | 'assistant',
+  content: string,
+  metadata?: Record<string, unknown>,
+): void {
+  getDb().prepare(
+    'INSERT INTO chat_messages (consultation_id, astronaut_id, role, content, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+  ).run(consultationId, astronautId, role, content, metadata ? JSON.stringify(metadata) : null, new Date().toISOString());
+}
+
+export function listMessages(consultationId: string, limit = 40): ChatMessage[] {
+  const rows = getDb().prepare(
+    'SELECT * FROM (SELECT * FROM chat_messages WHERE consultation_id = ? ORDER BY id DESC LIMIT ?) ORDER BY id ASC',
+  ).all(consultationId, limit) as ChatMessage[];
+  return rows;
+}
+
 export interface IncidentRow {
   id: string;
   consultation_id: string;
@@ -36,6 +65,16 @@ export function getDb(): Database.Database {
       rule_id TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS chat_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      consultation_id TEXT NOT NULL,
+      astronaut_id TEXT NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      metadata TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS chat_messages_consultation ON chat_messages (consultation_id, id);
   `);
   return db;
 }

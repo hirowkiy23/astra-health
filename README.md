@@ -54,6 +54,7 @@ npm run build
 | GET | `/api/astronaut/profile` | Astronaut profile |
 | GET | `/api/health/vitals` | Latest vitals |
 | POST | `/api/consultation/message` | Full consultation: triage + retrieval + response + incident |
+| GET | `/api/consultation/history?consultation_id={id}` | Restored multi-turn chat history |
 | POST | `/api/triage/evaluate` | Deterministic triage only |
 | GET | `/api/incidents` | Incident history |
 | GET | `/api/incidents/{id}` | Single incident |
@@ -95,6 +96,7 @@ The UI is based on the Figma file [NASA Space Apps Challenge 2026](https://www.f
 - SOS requires three deliberate presses before logging an incident and presenting the acknowledgement screen. Acknowledgement resets the activation count, and returning to the overview resets the button to its idle state.
 - Content surfaces use the Figma source's navy radial background, cyan/teal borders, white Inter typography, and blue active tabs.
 - ASTRA's retrieval corpus includes summarized NASA HRP hazards, risks and ongoing research from the three supplied source URLs. These are research background, not treatment protocols.
+- The chat supports knowledge-base questions and incident reports, persists user and assistant turns in SQLite, restores the latest conversation after a page refresh, and resolves short follow-up questions using recent context.
 - `public/orbital-login.png` — image exported from the user's Figma file.
 
 The original Figma source has empty Radiation, Daily, and Fitness frames. Their application views, plus Environment and AI Risk, were designed in the same visual system and clearly label simulated data.
