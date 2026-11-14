@@ -92,8 +92,8 @@ The UI is based on the Figma file [NASA Space Apps Challenge 2026](https://www.f
 
 - `/login` — spacecraft image, email/password fields, and demo-access flow. This is **not real authentication**.
 - `/dashboard` — Overview, Physiological, Radiation, Daily/Sleep & Mental Health, Fitness, Environment and AI Risk tabs; crew selection; environment metrics; SOS response; and ASTRA consultation modal.
-- SOS requires three deliberate presses before logging an incident and presenting the acknowledgement screen.
-- Content surfaces use a high-contrast light-teal theme with dark text while retaining the Figma panel geometry.
+- SOS requires three deliberate presses before logging an incident and presenting the acknowledgement screen. Acknowledgement resets the activation count, and returning to the overview resets the button to its idle state.
+- Content surfaces use the Figma source's navy radial background, cyan/teal borders, white Inter typography, and blue active tabs.
 - ASTRA's retrieval corpus includes summarized NASA HRP hazards, risks and ongoing research from the three supplied source URLs. These are research background, not treatment protocols.
 - `public/orbital-login.png` — image exported from the user's Figma file.
 
