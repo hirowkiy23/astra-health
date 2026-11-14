@@ -24,6 +24,18 @@ test('every scan covers ten body regions and reports a truthful summary', () => 
   assert.match(scan.summary, /illustrative/i);
 });
 
+test('every flagged region carries a reason, and nominal regions do not', () => {
+  const scan = generateScan('demo-001', '2026-W25', '2026-06-21T00:00:00Z');
+  for (const r of scan.regions) {
+    if (r.status === 'watch') {
+      assert.ok(r.reason, `${r.region} should have a reason`);
+      assert.doesNotMatch(r.reason, /diagnos/i);
+    } else {
+      assert.equal(r.reason, undefined);
+    }
+  }
+});
+
 test('the summary never claims a diagnosis', () => {
   const scan = generateScan('demo-001', '2026-W25', '2026-06-21T00:00:00Z');
   assert.doesNotMatch(scan.summary, /diagnos/i);

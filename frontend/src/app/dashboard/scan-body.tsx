@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 interface Scan {
-  regions: { region: string; status: 'nominal' | 'watch' }[];
+  regions: { region: string; status: 'nominal' | 'watch'; reason?: string }[];
   summary: string;
   weekKey: string;
   generatedAt: string;
@@ -34,6 +34,7 @@ export default function ScanBody({ astronautId }: { astronautId: string }) {
   const [scan, setScan] = useState<Scan | null>(null);
   const [hasScan, setHasScan] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<Scan['regions'][number] | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -61,11 +62,14 @@ export default function ScanBody({ astronautId }: { astronautId: string }) {
               const spot = REGION_SPOTS[r.region];
               if (!spot) return null;
               return (
-                <div
+                <button
                   key={r.region}
-                  className={`absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full ${r.status === 'watch' ? 'bg-[#e7b85f] shadow-[0_0_10px_#e7b85f]' : 'bg-[#51ce7a]'}`}
+                  type="button"
+                  onClick={() => setSelected(r)}
+                  className={`absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full ${r.status === 'watch' ? 'bg-[#e7b85f] shadow-[0_0_10px_#e7b85f]' : 'bg-[#51ce7a]'}`}
                   style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
                   title={`${r.region}: ${r.status === 'watch' ? 'flagged for review (illustrative)' : 'nominal (illustrative)'}`}
+                  aria-label={`${r.region} — ${r.status === 'watch' ? 'flagged for review' : 'nominal'}`}
                 />
               );
             })}
@@ -88,6 +92,24 @@ export default function ScanBody({ astronautId }: { astronautId: string }) {
             <span>Week {scan.weekKey}</span>
             <span>{hasScan ? 'Based on latest recorded scan' : 'No scan recorded yet'}</span>
             <span>Illustrative output · not a diagnosis</span>
+          </div>
+        </div>
+      )}
+
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#010d16]/75 p-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`${selected.region} details`}>
+          <div className="w-full max-w-sm rounded-2xl border border-[#398b98] bg-[#071e2d] p-6 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-white">{selected.region}</h3>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${selected.status === 'watch' ? 'bg-[#c29343]/20 text-[#e7b85f]' : 'bg-[#51ce7a]/20 text-[#70df92]'}`}>
+                {selected.status === 'watch' ? 'Review' : 'Nominal'}
+              </span>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-[#c1d9e3]">
+              {selected.reason ?? 'This region is within the demo normal band. No simulated abnormality was flagged.'}
+            </p>
+            <p className="mt-4 text-xs text-[#9fc0cd]">Illustrative scan output — not a clinical finding or diagnosis.</p>
+            <button onClick={() => setSelected(null)} className="mt-5 w-full rounded-xl bg-[#0876bf] px-5 py-3 font-bold text-white">Close</button>
           </div>
         </div>
       )}

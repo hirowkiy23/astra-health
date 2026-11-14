@@ -3,6 +3,8 @@ export type ScanStatus = 'nominal' | 'watch';
 export interface ScanRegion {
   region: string;
   status: ScanStatus;
+  /** Present only when status is "watch"; illustrative, not a clinical finding. */
+  reason?: string;
 }
 
 export interface SimulatedScan {
@@ -18,6 +20,20 @@ const REGIONS = [
   'Cardiac', 'Pulmonary', 'Renal', 'Hepatic', 'Musculoskeletal',
   'Neurological', 'Vascular', 'Skeletal', 'Gastrointestinal', 'Ocular',
 ];
+
+// Illustrative watch-reasons per region. Never presented as a diagnosis.
+const WATCH_REASONS: Record<string, string> = {
+  Cardiac: 'Heart-rate variability dipped below the demo baseline band; worth a re-measure at rest and a CMO review.',
+  Pulmonary: 'Simulated SpO2 pattern is slightly outside the demo normal band; verify cabin oxygen and re-check the sensor.',
+  Renal: 'Simulated fluid-shift markers drifted outside the demo band; hydrate and re-measure.',
+  Hepatic: 'Simulated metabolic markers are near the demo threshold; a follow-up reading is suggested.',
+  Musculoskeletal: 'Simulated muscle-tone signal is below the demo band; review recent exercise load and recovery.',
+  Neurological: 'Simulated autonomic signal is slightly off the demo baseline; cross-check sleep and stress logs.',
+  Vascular: 'Simulated circulation marker drifted outside the demo band; review post-EVA fluid shifts.',
+  Skeletal: 'Simulated bone-density trend is near the demo watch threshold; confirm with scheduled imaging.',
+  Gastrointestinal: 'Simulated gut-marker pattern is outside the demo band; log any digestive symptoms.',
+  Ocular: 'Simulated intraocular signal is near the demo threshold; schedule an eye check.',
+};
 
 /** Deterministic FNV-1a hash so a scan is stable for a given astronaut + week. */
 function hashString(input: string): number {
@@ -50,7 +66,9 @@ export function generateScan(astronautId: string, weekKey: string, generatedAt: 
     // A low, deterministic "watch" probability seeded per region + week.
     const roll = hashString(`${astronautId}:${weekKey}:${region}:${index}`) % 100;
     const status: ScanStatus = roll < 12 ? 'watch' : 'nominal';
-    return { region, status };
+    return status === 'watch'
+      ? { region, status, reason: WATCH_REASONS[region] }
+      : { region, status };
   });
   const watchCount = regions.filter(r => r.status === 'watch').length;
   const summary = watchCount === 0
