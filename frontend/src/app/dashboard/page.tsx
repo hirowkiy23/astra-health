@@ -6,6 +6,7 @@ import { pressSos } from '@/lib/sos';
 import type { SosPhase } from '@/lib/sos';
 import IncidentLog from './incident-log';
 import DailyCheckIn from './daily-check-in';
+import ScanBody from './scan-body';
 
 type Tab = 'Overview' | 'Physiological' | 'Radiation' | 'Daily' | 'Fitness' | 'Environment' | 'AI Risk';
 type Crew = { id: string; name: string; status: 'Good' | 'Review' | 'Critical'; weight: number; vitals: { heartRate: number; bloodPressure: string; temperature: number; spo2: number }; environment: { oxygen: number; carbonDioxide: number; temperature: number; pressure: number; humidity: number } };
@@ -132,7 +133,7 @@ export default function Dashboard() {
             <div className="space-y-3">{crew.slice(1).map((a, i) => <button key={a.id} onClick={() => setSelected(i + 1)} className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition ${selected === i + 1 ? 'border-[#68bfcd] bg-[#10394a]' : 'border-[#377b8c] bg-[#001c2b99] hover:bg-[#10394a]'}`}><div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#082739]/10"><UserIcon /></div><div><p className="text-lg font-bold">{a.name}</p><StatusPill status={a.status} /></div></button>)}</div>
             <button onClick={() => { const next = sosCount + 1; setSosCount(next); if (next >= 3) void triggerSos(); }} aria-label={`SOS emergency activation: press ${Math.max(0, 3 - sosCount)} more times`} className="mt-5 flex min-h-[150px] flex-col items-center justify-center rounded-2xl border border-[#9b3636] bg-[#6e171b] text-6xl font-extrabold tracking-[.16em] text-white transition hover:bg-[#8e242a] focus:outline-none focus:ring-4 focus:ring-[#b64949]/30">{sosCount > 0 ? `${sosCount}/3` : 'SOS'}<span className="mt-1 max-w-[230px] text-xs font-semibold tracking-normal text-[#ffe4e4]">{sosCount === 0 ? 'Press 3 times for emergency' : `Press ${3 - sosCount} more ${3 - sosCount === 1 ? 'time' : 'times'}`}</span></button>
           </section>
-          <BodyPanel astronaut={astronaut} />
+          <ScanBody astronautId={astronaut.id} />
           <Panel title="Environmental Monitoring"><div className="mb-4 rounded-lg border border-[#85b8c2] bg-[#082739] p-3 text-xs leading-5 text-[#c1d9e3]"><b className="text-[#e8f4f7]">Supported environments</b><p>Cabin · EVA · Lunar · Mars</p></div><div className="space-y-3">{[['Oxygen', astronaut.environment.oxygen, '%'], ['Carbon Dioxide', astronaut.environment.carbonDioxide, '%'], ['Temperature', astronaut.environment.temperature, '°C'], ['Pressure', astronaut.environment.pressure, 'kPa'], ['Humidity', astronaut.environment.humidity, '%']].map(([label, value, unit]) => <EnvironmentCard key={String(label)} label={String(label)} value={String(value)} unit={String(unit)} />)}</div><button onClick={() => setTab('Environment')} className="mt-4 w-full rounded-lg border border-[#398b98] py-2 text-xs font-bold text-[#d0e9f1]">Multi-environment view →</button></Panel>
         </div>
       ) : tab === 'Physiological' ? (

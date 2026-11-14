@@ -61,6 +61,8 @@ npm run build
 | GET | `/api/incidents/{id}/report` | Incident report with vitals snapshot |
 | GET | `/api/daily-logs?astronaut_id=&kind=` | Daily well-being logs and ultrasound scan status |
 | POST | `/api/daily-logs` | Save a daily check-in or ultrasound scan record |
+| GET | `/api/scan?astronaut_id=` | Simulated weekly body scan (illustrative, not diagnostic) |
+| POST | `/api/scan` | Record scan completion and return the generated scan |
 | GET | `/api/vitals/latest?astronaut_id=` | Live per-metric vitals snapshot + deterministic vitals triage |
 | GET | `/api/vitals/history?astronaut_id=&metric=&hours=` | Telemetry history (10 metrics per astronaut) |
 | POST | `/api/vitals/readings` | Manual/device vital ingestion (single or batch) with threshold alerts |
@@ -120,6 +122,7 @@ The UI is based on the Figma file [NASA Space Apps Challenge 2026](https://www.f
 - The selected crew member's simulated vitals are sent to triage, which now escalates on critical or abnormal readings and on missing data; each incident stores a vitals snapshot.
 - The AI Risk tab includes an incident log that opens the stored rule, vitals, and recorded response for review.
 - The Daily tab is a check-in form with a mood picker, optional note, and a submit button that shows a success popup. A separate weekly ultrasound reminder tracks whether the scan is due, and both check-in types persist to a `daily_logs` table.
+- The overview body figure is now a simulated 4D scan visualization (`/api/scan`): ten body regions shown as green (nominal) or amber (watch) markers, with a deterministic weekly scan generator. This is illustrative output only — it is not a diagnosis, not a measurement, and never presented as one.
 - `public/orbital-login.png` — image exported from the user's Figma file.
 
 The original Figma source has empty Radiation, Daily, and Fitness frames. Their application views, plus Environment and AI Risk, were designed in the same visual system and clearly label simulated data.

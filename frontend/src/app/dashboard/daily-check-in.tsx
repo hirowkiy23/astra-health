@@ -117,10 +117,10 @@ export default function DailyCheckIn({ astronautId }: { astronautId: string }) {
 
         <button
           onClick={() => {
-            fetch('/api/daily-logs', {
+            fetch('/api/scan', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ astronaut_id: astronautId, kind: 'ultrasound', note: 'Weekly ultrasound scan completed' }),
+              body: JSON.stringify({ astronaut_id: astronautId }),
             }).then(r => r.ok ? r.json() : Promise.reject())
               .then(() => fetch(`/api/daily-logs?astronaut_id=${encodeURIComponent(astronautId)}`).then(r => r.json()))
               .then(setState)
