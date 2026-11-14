@@ -86,10 +86,21 @@ frontend/
 docs/schema.sql                  Postgres/Supabase target schema
 ```
 
+## Design source
+
+The UI is based on the Figma file [NASA Space Apps Challenge 2026](https://www.figma.com/design/On7vnkMBuq5kxgXMOwcdpY/NASA-Space-Apps-Challenge-2026):
+
+- `/login` — spacecraft image, email/password fields, and demo-access flow. This is **not real authentication**.
+- `/dashboard` — Overview, Physiological, Radiation, Daily, and Fitness tabs; crew selection; environment metrics; SOS response; and ASTRA consultation modal.
+- `public/orbital-login.png` — image exported from the user's Figma file.
+
+The Figma source has empty Radiation, Daily, and Fitness frames. The app renders explicit placeholder states for those rather than inventing measurements or charts.
+
 ## Not yet built
 
 - Supabase Postgres (SQLite is the zero-setup demo store)
-- Authentication and role-based access
+- Real authentication and role-based access (the login screen is a demo-access flow)
 - Ground-support review view
 - Offline cached references
 - Deployment configuration
+- Designs for the Radiation, Daily, and Fitness frames
