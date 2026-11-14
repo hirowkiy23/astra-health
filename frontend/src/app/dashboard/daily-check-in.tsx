@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import DailyNutrition from './daily-nutrition';
 
 interface DailyLogState {
   logs: { id: string; kind: 'daily' | 'ultrasound'; mood: number | null; note: string | null; created_at: string }[];
@@ -108,6 +109,10 @@ export default function DailyCheckIn({ astronautId }: { astronautId: string }) {
           <p className="text-xs text-[#9fc0cd]">Crew-wide views must not expose these notes.</p>
         </form>
       </section>
+
+      <div className="lg:col-span-2">
+        <DailyNutrition astronautId={astronautId} />
+      </div>
 
       <section className="panel rounded-2xl p-5">
         <h2 className="text-xl font-semibold">Weekly ultrasound scan</h2>

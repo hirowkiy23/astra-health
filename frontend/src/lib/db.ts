@@ -75,6 +75,17 @@ export function getDb(): Database.Database {
       note TEXT,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS meals (
+      id TEXT PRIMARY KEY,
+      astronaut_id TEXT NOT NULL,
+      item_name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      calories INTEGER NOT NULL,
+      protein REAL NOT NULL,
+      carbs REAL NOT NULL,
+      fats REAL NOT NULL,
+      consumed_at TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS chat_messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       consultation_id TEXT NOT NULL,
