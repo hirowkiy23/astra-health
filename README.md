@@ -58,6 +58,22 @@ npm run build
 | POST | `/api/triage/evaluate` | Deterministic triage only |
 | GET | `/api/incidents` | Incident history |
 | GET | `/api/incidents/{id}` | Single incident |
+| GET | `/api/vitals/latest?astronaut_id=` | Live per-metric vitals snapshot + deterministic vitals triage |
+| GET | `/api/vitals/history?astronaut_id=&metric=&hours=` | Telemetry history (10 metrics per astronaut) |
+| POST | `/api/vitals/readings` | Manual/device vital ingestion (single or batch) with threshold alerts |
+| POST | `/api/vitals/tick` | Force a simulator step; optionally inject an incident episode |
+| GET | `/api/alerts?status=&astronaut_id=` | Threshold alerts (`active` by default; also `open`/`acknowledged`/`resolved`) |
+| POST | `/api/alerts/{id}/ack` | Acknowledge an alert |
+| POST | `/api/alerts/{id}/resolve` | Resolve an alert with an optional note |
+| GET | `/api/crew/monitor` | Whole-crew live monitoring rollup |
+
+### Live vitals monitoring
+
+Continuous crew telemetry ported from the manufacturing-intel crew-health backend, adapted to ASTRA:
+
+- **Lazy simulator** (`src/lib/vitals-sim.ts`): route handlers can't own daemons, so any vitals read advances a random-walk physiology model (10 metrics x 6 astronauts) at most once per 30 s; state persists in SQLite. `POST /api/vitals/tick` forces a step and can inject incident episodes (`post-exa-stress`, `solar-particle-event`, `sleep-debt`, `co2-scrubber-fault`, `febrile-illness`).
+- **Deterministic threshold rules** (`src/lib/vitals-specs.ts`): green/yellow/red bands per metric plus a spaceflight-medicine countermeasure KB. `vitalsTriageRule` is an independent deterministic rule; `combineTriage` merges it worst-of with the message triage, so live telemetry can escalate a consultation but never downgrade it. The LLM payload receives live vitals instead of the static demo values.
+- **Alert lifecycle**: threshold breaches open alerts (deduped per astronaut+metric), severity changes supersede, recovery auto-resolves; `ack`/`resolve` endpoints for the ground side.
 
 ## Safety and scope
 
@@ -67,6 +83,7 @@ npm run build
 - Reference material is background from NASA's Human Research Program, not a treatment protocol.
 - The LLM never owns urgency: `enforceTriageSafety` runs on every response, and red emergencies skip generation entirely.
 - Provider failure falls back to a deterministic response labeled `deterministic_demo` or `llm_error_fallback` — it never silently succeeds.
+- Vitals threshold alerts and the vitals triage rule are simulated and illustrative, and carry `validated: false` like every other rule.
 
 ## Layout
 

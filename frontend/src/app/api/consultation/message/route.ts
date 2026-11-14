@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { triage } from '@/lib/triage';
+import { combineTriage } from '@/lib/vitals-specs';
+import { getVitalsSnapshot, toDemoVitals } from '@/lib/vitals-sim';
+import { CREW } from '@/lib/crew';
 import { retrieve } from '@/lib/retrieval';
 import { enforceTriageSafety } from '@/lib/safety';
 import { buildFallbackResponse } from '@/lib/fallback';
 import { generateLlmResponse } from '@/lib/llm';
 import { saveIncident, appendMessage, listMessages } from '@/lib/db';
-import { PROFILE, VITALS } from '@/lib/demo-data';
+import { PROFILE } from '@/lib/demo-data';
 
 interface ConsultationBody {
   astronaut_id?: string;
@@ -23,7 +26,8 @@ export async function POST(request: Request) {
   }
 
   const astronautId = body.astronaut_id ?? PROFILE.id;
-  if (astronautId !== PROFILE.id) {
+  const knownIds = new Set<string>([PROFILE.id, ...CREW.map((c) => c.id)]);
+  if (!knownIds.has(astronautId)) {
     return NextResponse.json({ detail: 'Demo astronaut not found' }, { status: 404 });
   }
 
@@ -42,7 +46,12 @@ export async function POST(request: Request) {
     ? prior.filter(m => m.role === 'user').slice(-1)[0]?.content ?? ''
     : '';
   const references = ownReferences.length ? ownReferences : retrieve(`${previousTopic} ${message}`);
-  const triageResult = triage(message, VITALS);
+  // Live simulated telemetry replaces the static demo vitals. An independent
+  // deterministic vitals rule can escalate (never downgrade) the message triage.
+  const snapshot = getVitalsSnapshot(astronautId);
+  const liveVitals = toDemoVitals(snapshot);
+  const messageTriage = triage(message, liveVitals);
+  const triageResult = combineTriage(messageTriage, snapshot.triage);
   const fallback = buildFallbackResponse(message, triageResult, references);
 
   // Red emergencies never wait on a network call and never use generated prose.
@@ -50,7 +59,7 @@ export async function POST(request: Request) {
   if (triageResult.level === 'red') {
     response = enforceTriageSafety(fallback, triageResult);
   } else {
-    const generated = await generateLlmResponse(message, triageResult, references, fallback, VITALS, prior);
+    const generated = await generateLlmResponse(message, triageResult, references, fallback, liveVitals, prior);
     response = enforceTriageSafety(generated.response, triageResult);
     response.mode = generated.mode;
   }
@@ -63,5 +72,16 @@ export async function POST(request: Request) {
     triage: triageResult, references, incident_id: incidentId, mode: response.mode,
   });
 
-  return NextResponse.json({ response, triage: triageResult, references, incident_id: incidentId, consultation_id: consultationId, simulated: true });
+  return NextResponse.json({
+    response,
+    triage: triageResult,
+    message_triage: messageTriage,
+    vitals_triage: snapshot.triage,
+    live_vitals: liveVitals,
+    active_alerts: snapshot.active_alerts,
+    references,
+    incident_id: incidentId,
+    consultation_id: consultationId,
+    simulated: true,
+  });
 }
