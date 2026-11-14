@@ -53,3 +53,77 @@ export function hasRecentLog(astronautId: string, kind: LogKind, withinDays: num
   const ageMs = now - new Date(latest.created_at).getTime();
   return ageMs < withinDays * 24 * 60 * 60 * 1000;
 }
+
+export interface WeeklySummary {
+  weekKey: string;
+  range: { start: string; end: string };
+  checkInCount: number;
+  averageMood: number | null;
+  moodTrend: 'up' | 'down' | 'flat';
+  ultrasoundCount: number;
+  latestUltrasound: string | null;
+  flaggedRegions: string[];
+}
+
+const MOOD_LABELS = ['Very low', 'Low', 'Okay', 'Good', 'Excellent'];
+
+/** Roll up the astronaut's daily + ultrasound logs for the current ISO week. */
+export function summarizeWeek(astronautId: string, now = new Date()): WeeklySummary {
+  const start = startOfIsoWeek(now);
+  const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  const rows = getDb().prepare(
+    'SELECT * FROM daily_logs WHERE astronaut_id = ? AND created_at >= ? AND created_at < ? ORDER BY created_at ASC, rowid ASC',
+  ).all(astronautId, start.toISOString(), end.toISOString()) as DailyLogRow[];
+
+  const dailies = rows.filter(r => r.kind === 'daily');
+  const ultrasounds = rows.filter(r => r.kind === 'ultrasound');
+
+  const moods = dailies.filter(r => typeof r.mood === 'number').map(r => r.mood as number);
+  const averageMood = moods.length
+    ? moods.reduce((a, b) => a + b, 0) / moods.length
+    : null;
+
+  let moodTrend: 'up' | 'down' | 'flat' = 'flat';
+  if (moods.length >= 2) {
+    const first = moods.slice(0, Math.floor(moods.length / 2));
+    const second = moods.slice(Math.floor(moods.length / 2));
+    const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    const diff = avg(second) - avg(first);
+    moodTrend = diff > 0.25 ? 'up' : diff < -0.25 ? 'down' : 'flat';
+  }
+
+  const latestUltrasound = ultrasounds.length
+    ? ultrasounds[ultrasounds.length - 1].created_at
+    : null;
+
+  return {
+    weekKey: weekKeyOf(start),
+    range: { start: start.toISOString(), end: end.toISOString() },
+    checkInCount: dailies.length,
+    averageMood: averageMood !== null ? Math.round(averageMood * 10) / 10 : null,
+    moodTrend,
+    ultrasoundCount: ultrasounds.length,
+    latestUltrasound,
+    flaggedRegions: [], // filled in by the caller when a scan is attached
+  };
+}
+
+/** Mood label for a numeric 1-5 value (clamped). */
+export function moodLabel(mood: number): string {
+  return MOOD_LABELS[Math.min(4, Math.max(0, Math.round(mood) - 1))];
+}
+
+function startOfIsoWeek(date: Date): Date {
+  const d = new Date(date.getTime());
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() - day + 1);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+function weekKeyOf(date: Date): string {
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { saveDailyLog, listDailyLogs, latestDailyLog, hasRecentLog, type LogKind } from '@/lib/daily-logs';
+import { saveDailyLog, listDailyLogs, latestDailyLog, hasRecentLog, summarizeWeek, type LogKind } from '@/lib/daily-logs';
+import { generateScan, weekKeyFromDate } from '@/lib/scan-sim';
 import { PROFILE } from '@/lib/demo-data';
 import { CREW } from '@/lib/crew';
 
@@ -21,11 +22,22 @@ export async function GET(request: Request) {
   }
 
   const logs = listDailyLogs(astronautId, kind ?? undefined);
+  const summary = summarizeWeek(astronautId);
+
+  // Attach this week's flagged scan regions to the summary.
+  const latestScan = latestDailyLog(astronautId, 'ultrasound');
+  if (latestScan) {
+    const weekKey = weekKeyFromDate(new Date(latestScan.created_at));
+    const scan = generateScan(astronautId, weekKey, latestScan.created_at);
+    summary.flaggedRegions = scan.regions.filter(r => r.status === 'watch').map(r => r.region);
+  }
+
   return NextResponse.json({
     logs,
     latest_daily: latestDailyLog(astronautId, 'daily'),
     latest_ultrasound: latestDailyLog(astronautId, 'ultrasound'),
     ultrasound_due: !hasRecentLog(astronautId, 'ultrasound', 7),
+    weekly_summary: summary,
   });
 }
 

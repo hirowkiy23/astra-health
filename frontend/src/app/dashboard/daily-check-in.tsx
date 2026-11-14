@@ -6,6 +6,18 @@ interface DailyLogState {
   logs: { id: string; kind: 'daily' | 'ultrasound'; mood: number | null; note: string | null; created_at: string }[];
   ultrasound_due: boolean;
   latest_ultrasound: { created_at: string } | null;
+  weekly_summary: WeeklySummary;
+}
+
+interface WeeklySummary {
+  weekKey: string;
+  range: { start: string; end: string };
+  checkInCount: number;
+  averageMood: number | null;
+  moodTrend: 'up' | 'down' | 'flat';
+  ultrasoundCount: number;
+  latestUltrasound: string | null;
+  flaggedRegions: string[];
 }
 
 const MOODS = [
@@ -23,7 +35,7 @@ export default function DailyCheckIn({ astronautId }: { astronautId: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
-  const [state, setState] = useState<DailyLogState>({ logs: [], ultrasound_due: true, latest_ultrasound: null });
+  const [state, setState] = useState<DailyLogState>({ logs: [], ultrasound_due: true, latest_ultrasound: null, weekly_summary: null as unknown as WeeklySummary });
 
   useEffect(() => {
     fetch(`/api/daily-logs?astronaut_id=${encodeURIComponent(astronautId)}`)
@@ -133,6 +145,52 @@ export default function DailyCheckIn({ astronautId }: { astronautId: string }) {
         <p className="mt-3 text-xs text-[#9fc0cd]">Simulated action — no real ultrasound device is connected.</p>
       </section>
 
+      <section className="panel rounded-2xl p-5 lg:col-span-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Weekly summary</h2>
+          {state.weekly_summary && <span className="rounded-full border border-[#398b98] px-2 py-0.5 text-[10px] font-bold uppercase text-[#9fc0cd]">Week {state.weekly_summary.weekKey}</span>}
+        </div>
+
+        {!state.weekly_summary ? (
+          <p className="mt-3 text-sm text-[#c1d9e3]">Loading this week's summary…</p>
+        ) : (
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <SummaryStat label="Check-ins" value={String(state.weekly_summary.checkInCount)} sub="this week" />
+            <SummaryStat
+              label="Average mood"
+              value={state.weekly_summary.averageMood !== null ? `${state.weekly_summary.averageMood} / 5` : '—'}
+              sub={state.weekly_summary.averageMood !== null ? moodLabel(state.weekly_summary.averageMood) : 'no check-ins yet'}
+            />
+            <SummaryStat
+              label="Mood trend"
+              value={{ up: '↗', down: '↘', flat: '→' }[state.weekly_summary.moodTrend]}
+              sub={state.weekly_summary.moodTrend}
+            />
+            <SummaryStat
+              label="Ultrasound scans"
+              value={String(state.weekly_summary.ultrasoundCount)}
+              sub={state.weekly_summary.latestUltrasound ? `last ${new Date(state.weekly_summary.latestUltrasound).toLocaleDateString()}` : 'none recorded'}
+            />
+          </div>
+        )}
+
+        {state.weekly_summary && (
+          <div className="mt-5 rounded-xl border border-[#398b98] bg-[#ffffff08] p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#a9c6d3]">Flagged scan regions this week</p>
+            {state.weekly_summary.flaggedRegions.length === 0 ? (
+              <p className="mt-2 text-sm text-[#c1d9e3]">No regions flagged. Illustrative scan output only — not a clinical finding.</p>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {state.weekly_summary.flaggedRegions.map(region => (
+                  <span key={region} className="rounded-full border border-[#c29343] bg-[#c29343]/15 px-3 py-1 text-xs font-semibold text-[#e7b85f]">{region}</span>
+                ))}
+              </div>
+            )}
+            <p className="mt-3 text-xs text-[#9fc0cd]">Illustrative scan output — not a clinical finding or diagnosis.</p>
+          </div>
+        )}
+      </section>
+
       {submitted && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#010d16]/75 p-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Check-in submitted">
           <div className="w-full max-w-sm rounded-2xl border border-[#51ce7a] bg-[#071e2d] p-6 text-center shadow-2xl">
@@ -145,4 +203,19 @@ export default function DailyCheckIn({ astronautId }: { astronautId: string }) {
       )}
     </div>
   );
+}
+
+function SummaryStat({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div className="rounded-xl border border-[#398b98] bg-[#ffffff08] p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[#a9c6d3]">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-white">{value}</p>
+      <p className="mt-1 text-xs text-[#9fc0cd]">{sub}</p>
+    </div>
+  );
+}
+
+function moodLabel(mood: number): string {
+  const labels = ['Very low', 'Low', 'Okay', 'Good', 'Excellent'];
+  return labels[Math.min(4, Math.max(0, Math.round(mood) - 1))];
 }
