@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-type RadiationStatus = 'green' | 'yellow' | 'red';
+type RadiationStatus = 'safe' | 'caution' | 'danger';
 
 interface MemberRadiation {
   id: string;
@@ -18,33 +18,33 @@ const DEMO_RADIATION: MemberRadiation[] = [
   {
     id: 'astro-1',
     name: 'ASTRO - 1!',
-    status: 'green',
-    dose: '0.18',
-    cumulative: '22.4',
+    status: 'safe',
+    dose: '21 µSv/h',
+    cumulative: '125.5 mSv',
     actions: ['Continue normal mission operations.'],
   },
   {
     id: 'astro-2',
     name: 'ASTRO - 2',
-    status: 'yellow',
-    dose: '0.51',
-    cumulative: '38.7',
-    actions: ['Move to a shielded area', 'Review recent EVA exposure log', 'Report any nausea or fatigue'],
+    status: 'caution',
+    dose: '78 µSv/h',
+    cumulative: '210.3 mSv',
+    actions: ['Monitor radiation levels closely.'],
   },
   {
     id: 'astro-3',
     name: 'ASTRO - 3',
-    status: 'red',
-    dose: '1.24',
-    cumulative: '52.1',
-    actions: ['Immediate medical review required', 'Confirm shielding and dosimeter reading', 'Contact ground medical support'],
+    status: 'danger',
+    dose: '350 µSv/h',
+    cumulative: '480.6 mSv',
+    actions: ['Move to the designated radiation shelter and notify mission control.'],
   },
 ];
 
-const STATUS_STYLE: Record<RadiationStatus, { label: string; pill: string; ring: string; dot: string }> = {
-  green: { label: 'Nominal', pill: 'border-[#51ce7a] text-[#70df92]', ring: 'border-[#51ce7a]', dot: 'bg-[#51ce7a]' },
-  yellow: { label: 'Review', pill: 'border-[#e7b85f] text-[#e7b85f]', ring: 'border-[#e7b85f]', dot: 'bg-[#e7b85f]' },
-  red: { label: 'Critical', pill: 'border-[#f47d7d] text-[#f47d7d]', ring: 'border-[#f47d7d]', dot: 'bg-[#f47d7d]' },
+const STATUS_STYLE: Record<RadiationStatus, { label: string; pill: string; ring: string; dot: string; alertText: string }> = {
+  safe: { label: 'Safe', pill: 'border-[#19af52] text-[#19af52]', ring: 'border-[#19af52]', dot: 'bg-[#19af52]', alertText: 'Radiation exposure is within the configured safe range.' },
+  caution: { label: 'Caution', pill: 'border-[#bfb911] text-[#bfb911]', ring: 'border-[#bfb911]', dot: 'bg-[#bfb911]', alertText: 'Radiation levels are approaching the configured warning threshold.' },
+  danger: { label: 'Danger', pill: 'border-[#dc0000] text-[#dc0000]', ring: 'border-[#dc0000]', dot: 'bg-[#dc0000]', alertText: 'Critical radiation exposure detected. Immediate response required.' },
 };
 
 /** Radiation exposure page: per-member status tiers and animated recommended actions. */
@@ -81,7 +81,7 @@ export default function RadiationPanel() {
                 <p className="truncate font-bold">{m.name}</p>
                 <span className={`mt-0.5 inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold ${s.pill}`}>{s.label}</span>
               </div>
-              <span className="text-xs text-[#9fc0cd]">{m.dose} mSv</span>
+              <span className="text-xs text-[#9fc0cd]">{m.dose}</span>
             </button>
           );
         })}
@@ -93,13 +93,20 @@ export default function RadiationPanel() {
             <h2 className="text-xl font-semibold">Radiation exposure · {member.name}</h2>
             <p className="mt-1 text-sm text-[#c1d9e3]">Simulated dosimetry. Space radiation is invisible and a key NASA HRP hazard.</p>
           </div>
-          <span className={`rounded-full border px-3 py-1 text-xs font-bold ${style.pill}`}>{style.label}</span>
+          <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${style.pill}`}>{style.label}</span>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <DataCard label="Radiation Dose" value={member.dose} unit="mSv · simulated" />
-          <DataCard label="Cumulative Exposure" value={member.cumulative} unit="mSv · simulated" />
-          <DataCard label="Exposure Alert" value={style.label} unit={`${member.status} tier`} />
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <DataCard label="Radiation Dose" value={member.dose} unit="current rate" />
+          <DataCard label="Cumulative Exposure" value={member.cumulative} unit="mission total" />
+        </div>
+
+        <div className="mt-6">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#a9c6d3]">Exposure Alert</h3>
+          <div className={`rounded-xl border p-4 ${style.ring}`}>
+            <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${style.pill}`}>{style.label}</span>
+            <p className="mt-3 text-sm leading-6 text-[#d3e7ee]">{style.alertText}</p>
+          </div>
         </div>
 
         <div className="mt-6">

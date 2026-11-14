@@ -27,8 +27,8 @@ export interface MealRow {
 
 /** Catalog of selectable food and drink items for the demo. */
 export const FOOD_CATALOG: NutritionItem[] = [
-  { name: 'Brisket', category: 'food', calories: 460, protein: 48, carbs: 0, fats: 28, unit: '200 g' },
-  { name: 'Mac & Cheese', category: 'food', calories: 520, protein: 16, carbs: 58, fats: 22, unit: '250 g' },
+  { name: 'Barbecued Beef Brisket', category: 'food', calories: 297, protein: 27, carbs: 0, fats: 26, unit: 'serving' },
+  { name: 'Macaroni & Cheese', category: 'food', calories: 198, protein: 10, carbs: 26, fats: 8, unit: 'serving' },
   { name: 'Coffee', category: 'drink', calories: 5, protein: 0, carbs: 0, fats: 0, unit: '250 ml' },
   { name: 'Lemonade', category: 'drink', calories: 120, protein: 0, carbs: 31, fats: 0, unit: '250 ml' },
   { name: 'Mango Peach Smoothie', category: 'drink', calories: 210, protein: 3, carbs: 48, fats: 1, unit: '300 ml' },

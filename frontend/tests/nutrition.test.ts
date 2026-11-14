@@ -13,34 +13,34 @@ function freshDb() {
 
 test('the food catalog contains the two foods and three drinks', () => {
   const names = FOOD_CATALOG.map(item => item.name);
-  assert.deepEqual(names, ['Brisket', 'Mac & Cheese', 'Coffee', 'Lemonade', 'Mango Peach Smoothie']);
+  assert.deepEqual(names, ['Barbecued Beef Brisket', 'Macaroni & Cheese', 'Coffee', 'Lemonade', 'Mango Peach Smoothie']);
   assert.equal(FOOD_CATALOG.filter(i => i.category === 'food').length, 2);
   assert.equal(FOOD_CATALOG.filter(i => i.category === 'drink').length, 3);
 });
 
 test('findCatalogItem matches case-insensitively', () => {
-  assert.equal(findCatalogItem('brisket')?.protein, 48);
-  assert.equal(findCatalogItem('MAC & CHEESE')?.category, 'food');
+  assert.equal(findCatalogItem('barbecued beef brisket')?.protein, 27);
+  assert.equal(findCatalogItem('MACARONI & CHEESE')?.category, 'food');
   assert.equal(findCatalogItem('does not exist'), undefined);
 });
 
 test('a logged meal is stored and read back with its facts', () => {
   freshDb();
-  const item = findCatalogItem('Brisket')!;
+  const item = findCatalogItem('Barbecued Beef Brisket')!;
   const id = saveMeal({ astronautId: 'demo-001', item });
   const meals = listMeals('demo-001');
   assert.equal(meals.length, 1);
   assert.equal(meals[0].id, id);
-  assert.equal(meals[0].item_name, 'Brisket');
-  assert.equal(meals[0].protein, 48);
+  assert.equal(meals[0].item_name, 'Barbecued Beef Brisket');
+  assert.equal(meals[0].protein, 27);
 });
 
 test('nutritionTotals sums macros across meals since a timestamp', () => {
   freshDb();
-  saveMeal({ astronautId: 'demo-001', item: findCatalogItem('Brisket')! });
+  saveMeal({ astronautId: 'demo-001', item: findCatalogItem('Barbecued Beef Brisket')! });
   saveMeal({ astronautId: 'demo-001', item: findCatalogItem('Coffee')! });
   const totals = nutritionTotals('demo-001', '2020-01-01T00:00:00.000Z');
   assert.equal(totals.count, 2);
-  assert.equal(totals.protein, 48);
-  assert.equal(totals.calories, 465);
+  assert.equal(totals.protein, 27);
+  assert.equal(totals.calories, 302);
 });

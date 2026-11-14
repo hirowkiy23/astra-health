@@ -82,13 +82,13 @@ function SummaryView({ totals, onDetails }: { totals: Totals | null; onDetails: 
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Daily nutrition</h2>
+          <h2 className="text-xl font-semibold">Daily Nutrition</h2>
           <p className="mt-1 text-sm text-[#c1d9e3]">Track your daily intake of protein, carbohydrates and fats.</p>
         </div>
         <button onClick={onDetails} className="rounded-xl bg-[#0876bf] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#0a69a8]">Details</button>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <MacroStat label="Calories" value={totals ? `${totals.calories}` : '—'} unit="kcal" />
+        <MacroStat label="Calorie" value={totals ? `${totals.calories}` : '—'} unit="kcal" />
         <MacroStat label="Protein" value={totals ? `${totals.protein}` : '—'} unit="g" />
         <MacroStat label="Carbs" value={totals ? `${totals.carbs}` : '—'} unit="g" />
         <MacroStat label="Fats" value={totals ? `${totals.fats}` : '—'} unit="g" />
@@ -99,15 +99,18 @@ function SummaryView({ totals, onDetails }: { totals: Totals | null; onDetails: 
 
 function DetailsView({ totals, meals, onBack, onUpdate }: { totals: Totals | null; meals: Meal[]; onBack: () => void; onUpdate: () => void }) {
   const recent = useMemo(() => meals.slice(0, 6), [meals]);
+  const lastUpdated = recent.length
+    ? new Date(recent[0].consumed_at).toLocaleString([], { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+    : '—';
   return (
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Daily nutrition (details)</h2>
-          <p className="mt-1 text-sm text-[#c1d9e3]">Specific intake and recent meal history.</p>
+          <h2 className="text-xl font-semibold">Nutrition Details</h2>
+          <p className="mt-1 text-sm text-[#c1d9e3]">Last updated: {lastUpdated}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={onUpdate} className="rounded-xl bg-[#0876bf] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#0a69a8]">Update meal information</button>
+          <button onClick={onUpdate} className="rounded-xl bg-[#0876bf] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#0a69a8]">Update Meal Information</button>
           <button onClick={onBack} className="rounded-xl border border-[#398b98] px-4 py-2.5 text-sm font-bold text-[#d0e9f1]">Back</button>
         </div>
       </div>
@@ -117,23 +120,23 @@ function DetailsView({ totals, meals, onBack, onUpdate }: { totals: Totals | nul
           <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#a9c6d3]">Macro intake today</h3>
           <MacroChart totals={totals} />
           <div className="mt-4 grid grid-cols-3 gap-3">
-            <MacroStat label="Protein" value={totals ? `${totals.protein}` : '—'} unit="g" />
-            <MacroStat label="Carbs" value={totals ? `${totals.carbs}` : '—'} unit="g" />
-            <MacroStat label="Fats" value={totals ? `${totals.fats}` : '—'} unit="g" />
+            <MacroStat label="Proteins" value={`${totals?.protein ?? 0}/165`} unit="g" />
+            <MacroStat label="Carbs" value={`${totals?.carbs ?? 0}/140`} unit="g" />
+            <MacroStat label="Fats" value={`${totals?.fats ?? 0}/155`} unit="g" />
           </div>
         </div>
 
         <div>
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#a9c6d3]">Recent meals</h3>
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#a9c6d3]">Recent Meal</h3>
           {recent.length === 0 ? (
-            <p className="rounded-xl border border-[#398b98] bg-[#ffffff08] p-4 text-sm text-[#c1d9e3]">No meals logged yet. Use “Update meal information” to add one.</p>
+            <p className="rounded-xl border border-[#398b98] bg-[#ffffff08] p-4 text-sm text-[#c1d9e3]">No meals logged yet. Use “Update Meal Information” to add one.</p>
           ) : (
             <ul className="space-y-2">
               {recent.map(meal => (
                 <li key={meal.id} className="flex items-center justify-between rounded-xl border border-[#398b98] bg-[#ffffff08] p-3">
                   <div>
                     <p className="font-semibold">{meal.item_name}</p>
-                    <p className="text-xs text-[#9fc0cd]">{new Date(meal.consumed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {meal.category}</p>
+                    <p className="text-xs text-[#9fc0cd]">{new Date(meal.consumed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
                   <p className="text-sm font-bold text-[#c1d9e3]">{meal.calories} kcal</p>
                 </li>
@@ -192,13 +195,13 @@ function InputView({ astronautId, catalog, onBack, onSubmitted }: { astronautId:
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <div>
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#a9c6d3]">Food</h3>
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#a9c6d3]">Foods</h3>
           <div className="space-y-2">
             {foods.map(item => (
               <ItemButton key={item.name} item={item} active={selected?.name === item.name} onClick={() => pick(item)} />
             ))}
           </div>
-          <h3 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-[#a9c6d3]">Drinks</h3>
+          <h3 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-[#a9c6d3]">Beverages</h3>
           <div className="space-y-2">
             {drinks.map(item => (
               <ItemButton key={item.name} item={item} active={selected?.name === item.name} onClick={() => pick(item)} />
