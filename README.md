@@ -91,10 +91,13 @@ docs/schema.sql                  Postgres/Supabase target schema
 The UI is based on the Figma file [NASA Space Apps Challenge 2026](https://www.figma.com/design/On7vnkMBuq5kxgXMOwcdpY/NASA-Space-Apps-Challenge-2026):
 
 - `/login` — spacecraft image, email/password fields, and demo-access flow. This is **not real authentication**.
-- `/dashboard` — Overview, Physiological, Radiation, Daily, and Fitness tabs; crew selection; environment metrics; SOS response; and ASTRA consultation modal.
+- `/dashboard` — Overview, Physiological, Radiation, Daily/Sleep & Mental Health, Fitness, Environment and AI Risk tabs; crew selection; environment metrics; SOS response; and ASTRA consultation modal.
+- SOS requires three deliberate presses before logging an incident and presenting the acknowledgement screen.
+- Content surfaces use a high-contrast light-teal theme with dark text while retaining the Figma panel geometry.
+- ASTRA's retrieval corpus includes summarized NASA HRP hazards, risks and ongoing research from the three supplied source URLs. These are research background, not treatment protocols.
 - `public/orbital-login.png` — image exported from the user's Figma file.
 
-The Figma source has empty Radiation, Daily, and Fitness frames. The app renders explicit placeholder states for those rather than inventing measurements or charts.
+The original Figma source has empty Radiation, Daily, and Fitness frames. Their application views, plus Environment and AI Risk, were designed in the same visual system and clearly label simulated data.
 
 ## Not yet built
 

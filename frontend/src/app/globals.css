@@ -11,22 +11,35 @@
   --font-sans: var(--font-geist-sans);
 }
 
-html { color-scheme: dark; }
+html { color-scheme: light; }
 
 body {
   background: var(--background);
-  color: var(--foreground);
+  color: #102c35;
   font-family: var(--font-geist-sans), Arial, sans-serif;
 }
 
 .mission-bg {
-  background-color: #041a2a;
-  background-image:
-    radial-gradient(ellipse at 50% 46%, #14506e 0%, #0b344c 27%, #07283c 52%, #041a2a 80%),
-    linear-gradient(145deg, #041724, #0b2b40);
-  background-attachment: fixed;
+  background-color: #dcecef;
+  background-image: radial-gradient(ellipse at 45% 0%, #f0faf9 0%, #dceff0 48%, #c3e0e4 100%);
+  color: #102c35;
 }
+
+.panel {
+  border: 1px solid #398b98;
+  background: #eef8f7;
+  color: #102c35;
+  box-shadow: 0 6px 22px #18536112;
+}
+
+.panel-muted {
+  border: 1px solid #85b8c2;
+  background: #f6fbfb;
+  color: #173b46;
+}
+
+.text-muted { color: #3f606b; }
 
 button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
-::selection { background: #286789; }
+::selection { background: #a9d5dd; color: #102c35; }

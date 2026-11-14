@@ -2,10 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { retrieve } from '../src/lib/retrieval.ts';
 
-test('dizziness retrieves the vestibular reference', () => {
+test('dizziness retrieves the vestibular risk and gravity hazard', () => {
   const refs = retrieve('I feel dizzy after the gravity transition');
-  assert.equal(refs.length, 1);
+  assert.equal(refs.length, 2);
   assert.equal(refs[0].id, 'nasa-vestibular');
+  assert.equal(refs[1].id, 'hazard-gravity');
 });
 
 test('chest pain and breathing retrieve cardiovascular and hypoxia references', () => {
