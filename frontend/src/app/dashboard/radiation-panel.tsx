@@ -21,7 +21,7 @@ const DEMO_RADIATION: MemberRadiation[] = [
     status: 'green',
     dose: '0.18',
     cumulative: '22.4',
-    actions: ['Continue scheduled monitoring', 'No action required'],
+    actions: ['Continue normal mission operations.'],
   },
   {
     id: 'astro-2',
@@ -97,13 +97,13 @@ export default function RadiationPanel() {
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <DataCard label="Current reading" value={member.dose} unit="mSv · simulated" />
-          <DataCard label="Mission cumulative" value={member.cumulative} unit="mSv · simulated" />
-          <DataCard label="Status" value={style.label} unit={`${member.status} tier`} />
+          <DataCard label="Radiation Dose" value={member.dose} unit="mSv · simulated" />
+          <DataCard label="Cumulative Exposure" value={member.cumulative} unit="mSv · simulated" />
+          <DataCard label="Exposure Alert" value={style.label} unit={`${member.status} tier`} />
         </div>
 
         <div className="mt-6">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#a9c6d3]">Recommended actions</h3>
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#a9c6d3]">Recommended Action</h3>
           <ul className="space-y-2">
             {member.actions.map((action, i) => {
               const shown = revealed.includes(action);

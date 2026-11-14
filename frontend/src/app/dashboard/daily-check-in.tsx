@@ -71,6 +71,21 @@ export default function DailyCheckIn({ astronautId }: { astronautId: string }) {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <section className="panel rounded-2xl p-5">
+        <h2 className="text-xl font-semibold">Sleep & Recovery</h2>
+        <div className="mt-5 grid grid-cols-2 gap-4">
+          <div className="rounded-xl border border-[#398b98] bg-[#ffffff08] p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#a9c6d3]">Avg. Sleep Duration</p>
+            <p className="mt-2 text-2xl font-bold text-white">6.7<span className="ml-1 text-xs font-semibold text-[#bad1dd]">hours</span></p>
+          </div>
+          <div className="rounded-xl border border-[#398b98] bg-[#ffffff08] p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#a9c6d3]">Sleep Quality</p>
+            <p className="mt-2 text-2xl font-bold text-white">76<span className="ml-1 text-xs font-semibold text-[#bad1dd]">%</span></p>
+          </div>
+        </div>
+        <p className="mt-4 text-xs text-[#9fc0cd]">Simulated actigraphy data · illustrative only.</p>
+      </section>
+
+      <section className="panel rounded-2xl p-5">
         <h2 className="text-xl font-semibold">Daily well-being check-in</h2>
         <p className="mt-2 text-sm leading-6 text-[#c1d9e3]">Record mood and rest to track your own longitudinal pattern. Private individual input.</p>
 
@@ -162,14 +177,14 @@ export default function DailyCheckIn({ astronautId }: { astronautId: string }) {
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <SummaryStat label="Check-ins" value={String(state.weekly_summary.checkInCount)} sub="this week" />
             <SummaryStat
-              label="Average mood"
-              value={state.weekly_summary.averageMood !== null ? `${state.weekly_summary.averageMood} / 5` : '—'}
+              label="Weekly Mood Avg."
+              value={state.weekly_summary.averageMood !== null ? `${Math.round(state.weekly_summary.averageMood * 20)}%` : '—'}
               sub={state.weekly_summary.averageMood !== null ? moodLabel(state.weekly_summary.averageMood) : 'no check-ins yet'}
             />
             <SummaryStat
-              label="Mood trend"
-              value={{ up: '↗', down: '↘', flat: '→' }[state.weekly_summary.moodTrend]}
-              sub={state.weekly_summary.moodTrend}
+              label="Mood Status"
+              value={state.weekly_summary.averageMood !== null ? moodLabel(state.weekly_summary.averageMood) : '—'}
+              sub={{ up: 'improving', down: 'declining', flat: 'stable' }[state.weekly_summary.moodTrend]}
             />
             <SummaryStat
               label="Ultrasound scans"
