@@ -1,69 +1,95 @@
 # ASTRA — Autonomous Space Triage & Response Assistant
 
-Working 48-hour hackathon vertical slice for astronaut medical decision support.
+TypeScript-only astronaut medical decision-support prototype.
 
-## Current demo path
+**One Next.js application.** The UI, the API routes, the deterministic triage engine, the retrieval layer, the LLM client, and persistence all live in TypeScript. There is no Python service to run.
 
-1. Astronaut profile and explicitly simulated vitals load from FastAPI.
+## Demo path
+
+1. Astronaut profile and explicitly simulated vitals load from `/api/health/summary`.
 2. The astronaut submits a concern.
-3. A small curated NASA HRP retrieval set returns relevant references, or none.
+3. Keyword retrieval over a small curated NASA HRP corpus returns references, or none.
 4. An **independent deterministic triage rule** returns `red`, `yellow`, or `green`.
-5. A safety guard ensures the response cannot downgrade escalation when human support is required.
-6. The consultation is saved as an incident in local SQLite.
-7. The astronaut sees the triage result, grounded sources, and the incident record.
+5. Kimi K3.1 Pro (via an OpenAI-compatible endpoint) explains the concern using only the retrieved references.
+6. A safety guard ensures model text can never downgrade the deterministic escalation.
+7. The consultation is saved as an incident in SQLite.
 
-## Stack implemented
+## Stack
 
-- Next.js + TypeScript + Tailwind CSS
-- FastAPI + Pydantic
-- Local SQLite for the zero-configuration demo
-- pytest/test coverage for dashboard, triage, retrieval, incident persistence, and critical-alert precedence
+| Layer | Choice |
+|---|---|
+| Frontend | Next.js 16 (App Router) + React + TypeScript |
+| Styling | Tailwind CSS v4 |
+| Backend | Next.js Route Handlers (`src/app/api/**`) |
+| Persistence | SQLite via `better-sqlite3` |
+| LLM | `kimi-k3.1-pro` at `https://api.cosmoshub.tech/v1` |
+| Tests | Node's built-in `node:test` (zero extra deps) |
 
-## Run locally
-
-Terminal 1:
-
-```bash
-cd backend
-../venv/bin/uvicorn main:app --reload --port 8000
-```
-
-Terminal 2:
+## Run
 
 ```bash
 cd frontend
-cp .env.local.example .env.local
+npm install
+cp .env.local.example .env.local   # then add your own LLM_API_KEY
 npm run dev
 ```
 
-Open http://localhost:3000. API docs: http://localhost:8000/docs.
+Open http://localhost:3000.
 
-## Tests
+## Test and verify
 
 ```bash
-cd backend
-../venv/bin/pytest -q
+cd frontend
+npm test          # 19 tests: triage, retrieval, safety, persistence
+npm run typecheck # tsc --noEmit
+npm run build
 ```
+
+## API
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/health` | Service status and whether an LLM is configured |
+| GET | `/api/health/summary` | Demo astronaut profile and simulated vitals |
+| GET | `/api/astronaut/profile` | Astronaut profile |
+| GET | `/api/health/vitals` | Latest vitals |
+| POST | `/api/consultation/message` | Full consultation: triage + retrieval + response + incident |
+| POST | `/api/triage/evaluate` | Deterministic triage only |
+| GET | `/api/incidents` | Incident history |
+| GET | `/api/incidents/{id}` | Single incident |
 
 ## Safety and scope
 
 - This is a **prototype**, not a medical device or a diagnostic system.
 - All astronaut data and vitals are **fictional/simulated**.
-- Triage rules are **illustrative, not clinically validated**, and carry `validated: false`.
-- Reference material is background information from NASA’s Human Research Program pages, not a treatment protocol.
-- The LLM cannot own or downgrade the urgency result.
-- Failure states report that no assessment was produced; they do not silently succeed.
+- Triage rules are **illustrative, not clinically validated**, and always carry `validated: false`.
+- Reference material is background from NASA's Human Research Program, not a treatment protocol.
+- The LLM never owns urgency: `enforceTriageSafety` runs on every response, and red emergencies skip generation entirely.
+- Provider failure falls back to a deterministic response labeled `deterministic_demo` or `llm_error_fallback` — it never silently succeeds.
 
-## Not yet connected
+## Layout
 
-- Gemini / LLM answer generation and managed RAG. The present deterministic responder is deliberately labeled `deterministic_demo`.
-- Supabase Postgres. Local SQLite is the drop-in demo store.
-- Authentication, role-based access, audit-log UI, offline cached references, deployment.
+```
+frontend/
+├── src/app/
+│   ├── page.tsx                 Astronaut dashboard + consultation UI
+│   └── api/**                   Route handlers
+├── src/lib/
+│   ├── triage.ts                Deterministic triage rules
+│   ├── retrieval.ts             Curated NASA HRP corpus + keyword retrieval
+│   ├── safety.ts                Triage escalation guard + JSON extraction
+│   ├── llm.ts                   OpenAI-compatible client
+│   ├── fallback.ts              Deterministic responder
+│   ├── db.ts                    SQLite persistence
+│   └── demo-data.ts             Fictional astronaut and vitals
+└── tests/                       node:test suites
+docs/schema.sql                  Postgres/Supabase target schema
+```
 
-## Key next steps
+## Not yet built
 
-1. Swap the SQLite adapter for Supabase and apply the schema in `docs/schema.sql`.
-2. Add a Gemini provider behind the same response contract and run every generated answer through `enforce_triage_safety`.
-3. Have the medical-logic owner replace illustrative rules with approved, reviewed protocol rules and version them.
-4. Add a ground-support review view, since the current build is astronaut-facing.
-5. Record a backup demo before feature freeze.
+- Supabase Postgres (SQLite is the zero-setup demo store)
+- Authentication and role-based access
+- Ground-support review view
+- Offline cached references
+- Deployment configuration

@@ -11,7 +11,7 @@ type Result = { response: AssistantResponse; triage: Triage; references: Referen
 type Incident = { id: string; severity: string; symptoms: string; status: string; created_at: string };
 type Turn = { role: 'user' | 'assistant'; content: string; result?: Result };
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API = '';
 const COLORS = { red: '#cf4c58', yellow: '#c78320', green: '#1e9b73' };
 
 export default function Home() {
@@ -38,7 +38,7 @@ export default function Home() {
         setVitals(data.vitals);
         if (list.ok) setIncidents(await list.json());
       })
-      .catch(() => setError('ASTRA backend is unavailable. Start FastAPI on port 8000 and retry.'));
+      .catch(() => setError('ASTRA is unavailable. Check the server logs and reload.'));
   }, []);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [turns]);
