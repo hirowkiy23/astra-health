@@ -6,6 +6,8 @@ import IncidentLog from './incident-log';
 import DailyCheckIn from './daily-check-in';
 import ScanBody from './scan-body';
 import RadiationPanel from './radiation-panel';
+import BodyFigure from './body-figure';
+import { getSessionAstronautId } from '@/lib/auth';
 
 type Tab = 'Overview' | 'Physiological' | 'Radiation' | 'Daily' | 'Fitness' | 'Environment' | 'AI Risk';
 type Crew = { id: string; name: string; status: 'Good' | 'Review' | 'Critical'; weight: number; vitals: { heartRate: number; bloodPressure: string; temperature: number; spo2: number }; environment: { oxygen: number; carbonDioxide: number; temperature: number; pressure: number; humidity: number } };
@@ -25,7 +27,8 @@ const DEFAULT_CREW: Crew[] = [
 
 export default function Dashboard() {
   const [crew, setCrew] = useState(DEFAULT_CREW);
-  const [selected, setSelected] = useState(0);
+  const currentId = getSessionAstronautId();
+  const [selected, setSelected] = useState(() => Math.max(0, DEFAULT_CREW.findIndex(c => c.id === currentId)));
   const [tab, setTab] = useState<Tab>('Overview');
   const [sos, setSos] = useState<SosStatus>('idle');
   const [sosCount, setSosCount] = useState(0);
@@ -38,10 +41,14 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [incidentCount, setIncidentCount] = useState(0);
   const chatEnd = useRef<HTMLDivElement>(null);
+  // The logged-in astronaut (fixed identity for the whole dashboard).
+  const current = crew.find(c => c.id === currentId) ?? crew[0];
+  // The astronaut whose health summaries are currently being viewed.
   const astronaut = crew[selected];
 
   useEffect(() => {
     document.title = 'ASTRA — Mission health';
+    fetch('/api/seed').catch(() => {});
     fetch('/api/crew').then(r => r.json()).then(d => { if (d.crew?.length) setCrew(d.crew); }).catch(() => {});
     fetch('/api/incidents').then(r => r.json()).then(d => { if (Array.isArray(d)) setIncidentCount(d.length); }).catch(() => {});
     const saved = localStorage.getItem('astra-consultation-id');
@@ -67,7 +74,7 @@ export default function Dashboard() {
     setThinking('Searching the NASA knowledge base');
     setTurns(t => [...t, { role: 'user', text }]);
     try {
-      const r = await fetch('/api/consultation/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ astronaut_id: 'demo-001', message: text, consultation_id: consultationId, vitals: { heart_rate: astronaut.vitals.heartRate, spo2: astronaut.vitals.spo2, temperature: astronaut.vitals.temperature, blood_pressure: astronaut.vitals.bloodPressure } }) });
+      const r = await fetch('/api/consultation/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ astronaut_id: astronaut.id, message: text, consultation_id: consultationId, vitals: { heart_rate: astronaut.vitals.heartRate, spo2: astronaut.vitals.spo2, temperature: astronaut.vitals.temperature, blood_pressure: astronaut.vitals.bloodPressure } }) });
       if (!r.ok) throw new Error();
       const result: Result = await r.json();
       setConsultationId(result.consultation_id);
@@ -82,7 +89,7 @@ export default function Dashboard() {
     if (sos !== 'idle') return;
     setSos('sending'); setError('');
     try {
-      const r = await fetch('/api/consultation/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ astronaut_id: 'demo-001', message: 'SOS: I have severe chest pain and trouble breathing. Emergency assistance requested.' }) });
+      const r = await fetch('/api/consultation/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ astronaut_id: current.id, message: 'SOS: I have severe chest pain and trouble breathing. Emergency assistance requested.' }) });
       if (!r.ok) throw new Error();
       await r.json();
       setSos('response');
@@ -102,7 +109,7 @@ export default function Dashboard() {
       <header className="flex flex-col justify-between gap-7 xl:flex-row xl:items-center">
         <div className="flex items-center gap-5">
           <div className="grid h-[72px] w-[72px] place-items-center rounded-full border border-[#79a0ae]/50 bg-[#082739]/10"><UserIcon size={43} /></div>
-          <div><p className="text-2xl">Hello,</p><h1 className="text-2xl font-bold">{astronaut.name}</h1></div>
+          <div><p className="text-2xl">Hello,</p><h1 className="text-2xl font-bold">{current.name}</h1></div>
         </div>
         <div className="flex flex-wrap items-center gap-3 lg:justify-end">
           <nav aria-label="Health sections" className="flex flex-wrap gap-3">
@@ -128,7 +135,8 @@ export default function Dashboard() {
       ) : tab === 'Overview' ? (
         <div className="mt-7 grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)_280px]">
           <section className="flex flex-col rounded-2xl border border-[#397d91] panel p-4">
-            <div className="space-y-3">{crew.slice(1).map((a, i) => <button key={a.id} onClick={() => setSelected(i + 1)} className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition ${selected === i + 1 ? 'border-[#68bfcd] bg-[#10394a]' : 'border-[#377b8c] bg-[#001c2b99] hover:bg-[#10394a]'}`}><div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#082739]/10"><UserIcon /></div><div><p className="text-lg font-bold">{a.name}</p><StatusPill status={a.status} /></div></button>)}</div>
+            <p className="mb-3 px-1 text-[11px] font-semibold uppercase tracking-wide text-[#9fc0cd]">Crew — view health summaries</p>
+            <div className="space-y-3">{crew.map((a, i) => <button key={a.id} onClick={() => setSelected(i)} className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition ${selected === i ? 'border-[#68bfcd] bg-[#10394a]' : 'border-[#377b8c] bg-[#001c2b99] hover:bg-[#10394a]'}`}><div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#082739]/10"><UserIcon /></div><div><p className="text-lg font-bold">{a.name}{a.id === currentId && <span className="ml-2 text-[10px] font-semibold text-[#6ac2d0]">YOU</span>}</p><StatusPill status={a.status} /></div></button>)}</div>
             <button onClick={() => { const next = sosCount + 1; setSosCount(next); if (next >= 3) void triggerSos(); }} aria-label={`SOS emergency activation: press ${Math.max(0, 3 - sosCount)} more times`} className="mt-5 flex min-h-[150px] flex-col items-center justify-center rounded-2xl border border-[#9b3636] bg-[#6e171b] text-6xl font-extrabold tracking-[.16em] text-white transition hover:bg-[#8e242a] focus:outline-none focus:ring-4 focus:ring-[#b64949]/30">{sosCount > 0 ? `${sosCount}/3` : 'SOS'}<span className="mt-1 max-w-[230px] text-xs font-semibold tracking-normal text-[#ffe4e4]">{sosCount === 0 ? 'Press 3 times for emergency' : `Press ${3 - sosCount} more ${3 - sosCount === 1 ? 'time' : 'times'}`}</span></button>
           </section>
           <ScanBody astronautId={astronaut.id} />
@@ -153,8 +161,8 @@ export default function Dashboard() {
 function Panel({ title, children, className = '' }: { title: string; children: React.ReactNode; className?: string }) { return <section className={`rounded-2xl border border-[#397d91] panel p-5 ${className}`}><h2 className="mb-5 text-xl font-semibold">{title}</h2>{children}</section>; }
 function UserIcon({ size = 34 }: { size?: number }) { return <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden><circle cx="16" cy="10" r="5.5" fill="#a7b8bf" /><path d="M5 27c0-7 4.5-10 11-10s11 3 11 10" fill="#a7b8bf" /></svg>; }
 function StatusPill({ status }: { status: string }) { const color = status === 'Good' ? 'border-[#51ce7a] text-[#70df92]' : status === 'Review' ? 'border-[#e7b85f] text-[#e7b85f]' : 'border-[#f47d7d] text-[#f47d7d]'; return <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold ${color}`}>{status}</span>; }
-function BodyPanel({ astronaut, physiological = false }: { astronaut: Crew; physiological?: boolean }) { return <section className="flex min-h-[610px] flex-col items-center rounded-2xl border border-[#397d91] panel p-5"><div className="relative flex min-h-[500px] w-full flex-1 items-center justify-center"><BodyFigure highlight={physiological} /><div className="absolute right-5 top-7 h-[380px] w-16 border-r border-[#8bb5c3]/70">{[0, 1, 2, 3, 4].map(i => <i key={i} className="absolute right-0 block h-px w-5 bg-[#8bb5c3]/70" style={{ top: i * 95 }} />)}<span className="absolute -right-1 -top-6 text-xs font-semibold">height</span></div><div className="absolute bottom-4 h-16 w-72 rounded-[50%] border border-[#4b99ab]" /></div><p className="mt-4 text-sm font-semibold">weight = {astronaut.weight}kg</p></section>; }
-function BodyFigure({ highlight }: { highlight: boolean }) { return <svg width="319" height="582" viewBox="0 0 319 582" aria-label="Upright astronaut body model" role="img"><g fill="#d9d9d9" fillOpacity=".1"><rect x="96" y="0" width="127" height="127" rx="50" /><rect x="74" y="140" width="170" height="214" rx="25" /><rect x="0" y="140" width="62" height="214" rx="25" /><rect x="257" y="140" width="62" height="214" rx="25" /><rect x="74" y="368" width="79" height="214" rx="25" /><rect x="166" y="368" width="79" height="214" rx="25" /></g>{highlight && <circle cx="160" cy="200" r="32" fill="none" stroke="#70df92" strokeWidth="3" />}</svg>; }
+function BodyPanel({ astronaut, physiological = false }: { astronaut: Crew; physiological?: boolean }) { return <section className="flex min-h-[660px] flex-col items-center rounded-2xl border border-[#397d91] panel p-5"><div className="relative flex min-h-[560px] w-full flex-1 items-center justify-center"><BodyFigure highlight={physiological} className="max-w-[300px]" /><div className="absolute right-5 top-7 h-[440px] w-16 border-r border-[#8bb5c3]/70">{[0, 1, 2, 3, 4, 5].map(i => <i key={i} className="absolute right-0 block h-px w-5 bg-[#8bb5c3]/70" style={{ top: i * 88 }} />)}<span className="absolute -right-1 -top-6 text-xs font-semibold">height</span></div><div className="absolute bottom-4 h-16 w-72 rounded-[50%] border border-[#4b99ab]" /></div><p className="mt-4 text-sm font-semibold">weight = {astronaut.weight}kg</p></section>; }
+
 function VitalCard({ label, value, unit }: { label: string; value: string; unit: string }) { return <div className="rounded-xl border border-[#397d91] panel-muted p-4"><p className="text-sm font-medium">{label}</p><div className="mt-3 flex items-end justify-between gap-2"><p className="text-2xl font-extrabold">{value}<span className="ml-1 text-xs font-semibold text-[#bad1dd]">{unit}</span></p><StatusPill status="Good" /></div></div>; }
 function EnvironmentCard({ label, value, unit }: { label: string; value: string; unit: string }) { return <div className="rounded-xl border border-[#397d91] p-4"><p className="text-sm">{label}</p><div className="mt-2 flex items-end justify-between gap-2"><p className="text-3xl font-extrabold">{value}<span className="ml-1 text-xs text-[#bad1dd]">{unit}</span></p><StatusPill status="Good" /></div></div>; }
 function StatusRow({ tag, text, muted = false }: { tag: string; text: string; muted?: boolean }) { return <div className="rounded-xl border border-[#397d91] p-4"><span className={`inline-block rounded-full border px-3 py-1 text-xs font-bold ${muted ? 'border-white/70 text-white' : 'border-[#51ce7a] text-[#70df92]'}`}>{tag}</span><p className="mt-3 text-sm leading-6 text-[#d3e7ee]">{text}</p></div>; }

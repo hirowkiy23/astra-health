@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import BodyFigure from './body-figure';
 
 interface Scan {
   regions: { region: string; status: 'nominal' | 'watch'; reason?: string }[];
@@ -17,21 +18,22 @@ interface ScanResponse {
 
 // Map each scan region onto the body-figure geometry (percent coordinates,
 // converted to viewBox space inside the SVG so the markers scale with it).
+// The body figure viewBox is 320 x 700.
 const REGION_SPOTS: Record<string, { x: number; y: number }> = {
-  Cardiac: { x: 50, y: 34 },
-  Pulmonary: { x: 50, y: 42 },
-  Renal: { x: 44, y: 58 },
-  Hepatic: { x: 56, y: 54 },
-  Musculoskeletal: { x: 32, y: 52 },
+  Cardiac: { x: 50, y: 30 },
+  Pulmonary: { x: 50, y: 36 },
+  Renal: { x: 46, y: 52 },
+  Hepatic: { x: 55, y: 49 },
+  Musculoskeletal: { x: 36, y: 48 },
   Neurological: { x: 50, y: 12 },
-  Vascular: { x: 68, y: 52 },
-  Skeletal: { x: 50, y: 74 },
-  Gastrointestinal: { x: 50, y: 62 },
-  Ocular: { x: 50, y: 7 },
+  Vascular: { x: 66, y: 48 },
+  Skeletal: { x: 50, y: 66 },
+  Gastrointestinal: { x: 50, y: 55 },
+  Ocular: { x: 50, y: 8 },
 };
 
-const VIEW_W = 319;
-const VIEW_H = 582;
+const VIEW_W = 320;
+const VIEW_H = 700;
 
 /** Simulated 4D-scan body visualization. Illustrative only — not a diagnosis. */
 export default function ScanBody({ astronautId }: { astronautId: string }) {
@@ -62,14 +64,45 @@ export default function ScanBody({ astronautId }: { astronautId: string }) {
         <span className="rounded-full border border-[#51ce7a] px-2 py-0.5 text-[10px] font-bold uppercase text-[#70df92]">Simulated 4D</span>
       </div>
 
-      <div className="relative flex min-h-[500px] w-full flex-1 items-center justify-center">
+      <div className="relative flex min-h-[540px] w-full flex-1 items-center justify-center">
         {loading ? (
           <p className="text-sm text-[#c1d9e3]">Preparing scan…</p>
         ) : scan ? (
-          <BodyFigure
-            regions={scan.regions}
-            onSelect={setSelected}
-          />
+          <BodyFigure ariaLabel="Upright astronaut body model">
+            {/* Region markers — inside the viewBox so they scale with the figure. */}
+            {scan.regions.map(r => {
+              const spot = REGION_SPOTS[r.region];
+              if (!spot) return null;
+              const cx = (spot.x / 100) * VIEW_W;
+              const cy = (spot.y / 100) * VIEW_H;
+              return (
+                <g
+                  key={r.region}
+                  onClick={() => setSelected(r)}
+                  style={{ cursor: 'pointer' }}
+                  role="button"
+                  aria-label={`${r.region} — ${r.status === 'watch' ? 'flagged for review' : 'nominal'}`}
+                >
+                  <circle cx={cx} cy={cy} r="14" fill="transparent" />
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r="5"
+                    fill={r.status === 'watch' ? '#e7b85f' : '#51ce7a'}
+                  />
+                  {r.status === 'watch' && <circle cx={cx} cy={cy} r="9" fill="none" stroke="#e7b85f" strokeOpacity=".5" />}
+                </g>
+              );
+            })}
+            {/* Height ruler, scaled inside the viewBox. */}
+            <g>
+              <line x1={VIEW_W - 6} y1="40" x2={VIEW_W - 6} y2="640" stroke="#8bb5c3" strokeOpacity=".7" />
+              {[0, 1, 2, 3, 4, 5].map(i => (
+                <line key={i} x1={VIEW_W - 14} y1={40 + i * 120} x2={VIEW_W - 6} y2={40 + i * 120} stroke="#8bb5c3" strokeOpacity=".7" />
+              ))}
+              <text x={VIEW_W - 22} y="30" fill="#c1d9e3" fontSize="11" textAnchor="end">height</text>
+            </g>
+          </BodyFigure>
         ) : (
           <p className="text-sm text-[#c1d9e3]">No scan available.</p>
         )}
@@ -109,58 +142,3 @@ export default function ScanBody({ astronautId }: { astronautId: string }) {
   );
 }
 
-function BodyFigure({ regions, onSelect }: { regions: Scan['regions']; onSelect: (r: Scan['regions'][number]) => void }) {
-  return (
-    <svg
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-      className="h-auto w-full max-w-[319px]"
-      preserveAspectRatio="xMidYMid meet"
-      aria-label="Upright astronaut body model"
-      role="img"
-    >
-      <g fill="#d9d9d9" fillOpacity=".1">
-        <rect x="96" y="0" width="127" height="127" rx="50" />
-        <rect x="74" y="140" width="170" height="214" rx="25" />
-        <rect x="0" y="140" width="62" height="214" rx="25" />
-        <rect x="257" y="140" width="62" height="214" rx="25" />
-        <rect x="74" y="368" width="79" height="214" rx="25" />
-        <rect x="166" y="368" width="79" height="214" rx="25" />
-      </g>
-
-      {/* Region markers — inside the viewBox so they scale with the figure. */}
-      {regions.map(r => {
-        const spot = REGION_SPOTS[r.region];
-        if (!spot) return null;
-        const cx = (spot.x / 100) * VIEW_W;
-        const cy = (spot.y / 100) * VIEW_H;
-        return (
-          <g
-            key={r.region}
-            onClick={() => onSelect(r)}
-            style={{ cursor: 'pointer' }}
-            role="button"
-            aria-label={`${r.region} — ${r.status === 'watch' ? 'flagged for review' : 'nominal'}`}
-          >
-            <circle cx={cx} cy={cy} r="14" fill="transparent" />
-            <circle
-              cx={cx}
-              cy={cy}
-              r="5"
-              fill={r.status === 'watch' ? '#e7b85f' : '#51ce7a'}
-            />
-            {r.status === 'watch' && <circle cx={cx} cy={cy} r="9" fill="none" stroke="#e7b85f" strokeOpacity=".5" />}
-          </g>
-        );
-      })}
-
-      {/* Height ruler, scaled inside the viewBox. */}
-      <g>
-        <line x1={VIEW_W - 6} y1="40" x2={VIEW_W - 6} y2="420" stroke="#8bb5c3" strokeOpacity=".7" />
-        {[0, 1, 2, 3, 4].map(i => (
-          <line key={i} x1={VIEW_W - 14} y1={40 + i * 95} x2={VIEW_W - 6} y2={40 + i * 95} stroke="#8bb5c3" strokeOpacity=".7" />
-        ))}
-        <text x={VIEW_W - 22} y="30" fill="#c1d9e3" fontSize="11" textAnchor="end">height</text>
-      </g>
-    </svg>
-  );
-}

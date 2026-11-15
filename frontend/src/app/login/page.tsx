@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { authenticate, setSessionAstronautId, ASTRO_CREDENTIALS } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,8 +25,13 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    // Prototype access only: this is not authentication and accepts no real credentials.
-    sessionStorage.setItem('astra-demo-access', 'granted');
+    const cred = authenticate(email, password);
+    if (!cred) {
+      setError('Wrong password*');
+      setLoading(false);
+      return;
+    }
+    setSessionAstronautId(cred.id);
     router.push('/dashboard');
   }
 
@@ -51,7 +57,7 @@ export default function LoginPage() {
             {error && <p role="alert" className="text-sm text-[#ffc0c0]">{error}</p>}
             <button disabled={loading} className="mt-4 h-12 rounded-lg bg-[#b52828] px-12 text-sm font-extrabold uppercase tracking-widest text-white transition hover:bg-[#ce3636] focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-60">{loading ? 'Opening…' : 'Masuk'}</button>
           </form>
-          <p className="mt-8 max-w-sm text-[11px] leading-5 text-[#84aaba]">Prototype only. Enter any demo credentials; no credentials are stored or transmitted. Do not use real account passwords.</p>
+          <p className="mt-8 max-w-sm text-[11px] leading-5 text-[#84aaba]">Demo access — sign in as any crew member, e.g. <span className="text-[#a9c6d3]">{ASTRO_CREDENTIALS[0].email}</span> / <span className="text-[#a9c6d3]">{ASTRO_CREDENTIALS[0].password}</span> (or astro-2…astro-5). No real credentials are stored or transmitted.</p>
         </section>
       </div>
     </main>
