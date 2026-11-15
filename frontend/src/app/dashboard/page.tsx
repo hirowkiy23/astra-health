@@ -145,39 +145,6 @@ export default function Dashboard() {
 
       {error && <div role="alert" className="mt-5 rounded-xl border border-[#ff9595] bg-[#671d24]/80 p-4 text-sm">{error}</div>}
 
-<<<<<<< HEAD
-      {sos !== 'idle' ? (
-        <section className="mt-7 grid gap-6 lg:grid-cols-2">
-          <Panel title="Latest Update"><div className="grid gap-4 sm:grid-cols-2">{metrics.map(([label, value, unit]) => <VitalCard key={label} label={label} value={value} unit={unit} />)}</div><p className="mt-6 rounded-lg border border-[#b84e4e] bg-[#7a2424]/25 px-4 py-3 text-sm font-semibold text-[#ffcece]">SOS incident logged · Emergency assistance required</p></Panel>
-          <Panel title="Status"><div className="space-y-4"><StatusRow tag="Signal Received" text="ASTRO-2 is responding and heading to the location." /><StatusRow tag="Signal Received" text="ASTRO-3 is responding and heading to the location." /><StatusRow tag="Data Transmitted" text="Medical data has been sent to the Earth Medical Team." muted /></div></Panel>
-          <Panel title="Possible Causes" className="lg:col-span-2">
-            <div className="flex flex-col justify-between gap-8 md:flex-row">
-              <div>
-                <h2 className="text-2xl font-bold">Emergency assessment required</h2>
-                <p className="mt-3 max-w-xl text-sm leading-6 text-[#c1d9e3]">An illustrative emergency rule matched. This is not a diagnosis. Follow the approved spacecraft emergency procedure; do not wait for further AI assessment.</p>
-                <ul className="mt-5 list-disc space-y-2 pl-5 text-sm text-[#d3e7ee]">
-                  <li>Activate the applicable approved mission emergency procedure.</li>
-                  <li>Contact the crew medical officer or ground medical support.</li>
-                  <li>Use only approved protocols and trained human assistance.</li>
-                </ul>
-              </div>
-              <div className="flex shrink-0 flex-col gap-3">
-                <button
-                  onClick={() => { setSos('resolved'); setSosCount(0); }}
-                  className={`rounded-xl px-12 py-4 text-sm font-extrabold transition ${
-                  sos === 'resolved'
-                  ? 'bg-[#d64545] text-white'
-                  : 'bg-[#e5ebee] text-[#142d3c] hover:bg-white'
-                  }`}
-                  >
-                  {sos === 'resolved' ? 'Acknowledged' : 'Acknowledge'}
-                </button>
-                <button onClick={() => { setSos('idle'); setSosCount(0); }} className="rounded-xl border border-[#5f99ae] px-12 py-3 text-sm">Return to overview</button>
-              </div>
-            </div>
-          </Panel>
-        </section>
-=======
       {sosFollowUp ? (
         <SosFollowUpPanel
           targetName={sosFollowUp.targetName}
@@ -185,7 +152,6 @@ export default function Dashboard() {
           onAcknowledge={() => handleResolveSos(sosFollowUp.targetId)}
           onBack={() => setSosFollowUp(null)}
         />
->>>>>>> d2792975b3fae72cb25550eb3eb74e9c7aed204b
       ) : tab === 'Overview' ? (
         <div className="mt-7 grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)_280px]">
           <section className="flex flex-col rounded-2xl border border-[#397d91] panel p-4">
@@ -263,8 +229,7 @@ function SosFollowUpPanel({ targetName, isReceiver, onAcknowledge, onBack }: { t
   );
 }
 function UserIcon({ size = 34 }: { size?: number }) { return <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden><circle cx="16" cy="10" r="5.5" fill="#a7b8bf" /><path d="M5 27c0-7 4.5-10 11-10s11 3 11 10" fill="#a7b8bf" /></svg>; }
-<<<<<<< HEAD
-function StatusPill({ status }: { status: string }) { const color = status === 'Good' ? 'border-[#51ce7a] text-[#70df92]' : status === 'Review' ? 'border-[#e7b85f] text-[#e7b85f]' : 'border-[#f47d7d] text-[#f47d7d]'; return <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold ${color}`}>{status}</span>; }
+function StatusPill({ status }: { status: string }) { const color = status === 'Good' ? 'border-[#51ce7a] text-[#70df92]' : status === 'Review' ? 'border-[#e7b85f] text-[#e7b85f]' : status === 'SOS' ? 'border-[#dc0000] text-[#ff6b6b] bg-[#dc0000]/15' : 'border-[#f47d7d] text-[#f47d7d]'; return <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold ${color}`}>{status}</span>; }
 function BodyPanel({ astronaut, physiological = false }: { astronaut: Crew; physiological?: boolean }) {
   return (
     <section className="flex min-h-[660px] flex-col items-center rounded-2xl border border-[#397d91] panel p-5">
@@ -285,28 +250,7 @@ function BodyPanel({ astronaut, physiological = false }: { astronaut: Crew; phys
     </section>
   );
 }
-function VitalCard({ label, value, unit }: { label: string; value: string; unit: string }) {
-  return (
-    <div className="rounded-xl border border-[#397d91] panel-muted p-4">
-      <p className="text-sm font-medium">{label}</p>
-      <div className="mt-3 flex items-end justify-between gap-2">
-        <p className="min-w-0 whitespace-nowrap text-xl font-extrabold">
-          {value}
-          <span className="ml-1 text-[11px] font-semibold text-[#bad1dd]">{unit}</span>
-        </p>
-        <span className="shrink-0">
-          <StatusPill status="Good" />
-        </span>
-      </div>
-    </div>
-  );
-}
-=======
-function StatusPill({ status }: { status: string }) { const color = status === 'Good' ? 'border-[#51ce7a] text-[#70df92]' : status === 'Review' ? 'border-[#e7b85f] text-[#e7b85f]' : status === 'SOS' ? 'border-[#dc0000] text-[#ff6b6b] bg-[#dc0000]/15' : 'border-[#f47d7d] text-[#f47d7d]'; return <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold ${color}`}>{status}</span>; }
-function BodyPanel({ astronaut, physiological = false }: { astronaut: Crew; physiological?: boolean }) { return <section className="flex min-h-[660px] flex-col items-center rounded-2xl border border-[#397d91] panel p-5"><div className="relative flex min-h-[560px] w-full flex-1 items-center justify-center"><BodyFigure highlight={physiological} className="max-w-[300px]" /><div className="absolute right-5 top-7 h-[440px] w-16 border-r border-[#8bb5c3]/70">{[0, 1, 2, 3, 4, 5].map(i => <i key={i} className="absolute right-0 block h-px w-5 bg-[#8bb5c3]/70" style={{ top: i * 88 }} />)}<span className="absolute -right-1 -top-6 text-xs font-semibold">height</span></div><div className="absolute bottom-4 h-16 w-72 rounded-[50%] border border-[#4b99ab]" /></div><p className="mt-4 text-sm font-semibold">weight = {astronaut.weight}kg</p></section>; }
-
 function VitalCard({ label, value, unit }: { label: string; value: string; unit: string }) { return <div className="rounded-xl border border-[#397d91] panel-muted p-4"><p className="text-sm font-medium">{label}</p><div className="mt-3 flex items-end justify-between gap-2"><p className="text-2xl font-extrabold">{value}<span className="ml-1 text-xs font-semibold text-[#bad1dd]">{unit}</span></p><StatusPill status="Good" /></div></div>; }
->>>>>>> d2792975b3fae72cb25550eb3eb74e9c7aed204b
 function EnvironmentCard({ label, value, unit }: { label: string; value: string; unit: string }) { return <div className="rounded-xl border border-[#397d91] p-4"><p className="text-sm">{label}</p><div className="mt-2 flex items-end justify-between gap-2"><p className="text-3xl font-extrabold">{value}<span className="ml-1 text-xs text-[#bad1dd]">{unit}</span></p><StatusPill status="Good" /></div></div>; }
 function StatusRow({ tag, text, muted = false }: { tag: string; text: string; muted?: boolean }) { return <div className="rounded-xl border border-[#397d91] p-4"><span className={`inline-block rounded-full border px-3 py-1 text-xs font-bold ${muted ? 'border-white/70 text-white' : 'border-[#51ce7a] text-[#70df92]'}`}>{tag}</span><p className="mt-3 text-sm leading-6 text-[#d3e7ee]">{text}</p></div>; }
 function FeatureTab({ tab, astronautId, onConsult }: { tab: Tab; astronautId: string; onConsult: () => void }) {
