@@ -1,8 +1,10 @@
+export type CrewStatus = 'Good' | 'Review' | 'Critical' | 'SOS';
+
 export interface Astronaut {
   id: string;
   name: string;
   mission: string;
-  status: 'Good' | 'Review' | 'Critical';
+  status: CrewStatus;
   vitals: {
     heartRate: number;
     bloodPressure: string;
