@@ -105,16 +105,20 @@ export default function Dashboard() {
     } catch { setError('SOS request failed. Use the spacecraft emergency procedure immediately.'); }
   }
 
-  async function handleResolveSos(targetId: string) {
-    setError('');
-    try {
-      const r = await fetch('/api/crew/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ astronaut_id: targetId, action: 'resolve' }) });
-      if (!r.ok) throw new Error();
-      const state: SosApiState = await r.json();
-      setCrew(prev => prev.map(c => c.id === targetId ? { ...c, status: state.status } : c));
-      setSosFollowUp(null);
-    } catch { setError('Could not update SOS status.'); }
+async function handleResolveSos(targetId: string) {
+  setError('');
+  try {
+    const r = await fetch('/api/crew/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ astronaut_id: targetId, action: 'resolve' }) });
+    if (!r.ok) throw new Error();
+    const state: SosApiState = await r.json();
+    setCrew(prev => prev.map(c => c.id === targetId ? { ...c, status: state.status } : c));
+    setTimeout(() => setSosFollowUp(null), 1200); // tunda supaya status "Acknowledged" sempat terlihat
+    return true;
+  } catch {
+    setError('Could not update SOS status.');
+    return false;
   }
+}
 
   const metrics = [
     ['Heart Rate', `${astronaut.vitals.heartRate}`, 'bpm'],
@@ -180,7 +184,8 @@ export default function Dashboard() {
 
 function Panel({ title, children, className = '' }: { title: string; children: React.ReactNode; className?: string }) { return <section className={`rounded-2xl border border-[#397d91] panel p-5 ${className}`}><h2 className="mb-5 text-xl font-semibold">{title}</h2>{children}</section>; }
 
-function SosFollowUpPanel({ targetName, isReceiver, onAcknowledge, onBack }: { targetName: string; isReceiver: boolean; onAcknowledge: () => void; onBack: () => void }) {
+function SosFollowUpPanel({ targetName, isReceiver, onAcknowledge, onBack }: { targetName: string; isReceiver: boolean; onAcknowledge: () => void | Promise<boolean | void>; onBack: () => void }) {
+  const [acknowledged, setAcknowledged] = useState(false);
   return (
     <section className="mt-7 grid gap-6 lg:grid-cols-2">
       <Panel title="Latest Update">
@@ -218,7 +223,21 @@ function SosFollowUpPanel({ targetName, isReceiver, onAcknowledge, onBack }: { t
               </>
             ) : (
               <>
-                <button onClick={onAcknowledge} className="rounded-xl bg-[#e5ebee] px-12 py-4 text-sm font-extrabold text-[#142d3c]">Acknowledge</button>
+                <button
+                  onClick={async () => {
+                    setAcknowledged(true);
+                    const ok = await onAcknowledge();
+                    if (ok === false) setAcknowledged(false);
+                  }}
+                  disabled={acknowledged}
+                  className={`rounded-xl px-12 py-4 text-sm font-extrabold transition ${
+                    acknowledged
+                      ? 'bg-[#d64545] text-white'
+                      : 'bg-[#e5ebee] text-[#142d3c] hover:bg-white'
+                  }`}
+                >
+                  {acknowledged ? 'Acknowledged' : 'Acknowledge'}
+                </button>
                 <button onClick={onBack} className="rounded-xl border border-[#5f99ae] px-12 py-3 text-sm">Back</button>
               </>
             )}
@@ -250,7 +269,22 @@ function BodyPanel({ astronaut, physiological = false }: { astronaut: Crew; phys
     </section>
   );
 }
-function VitalCard({ label, value, unit }: { label: string; value: string; unit: string }) { return <div className="rounded-xl border border-[#397d91] panel-muted p-4"><p className="text-sm font-medium">{label}</p><div className="mt-3 flex items-end justify-between gap-2"><p className="text-2xl font-extrabold">{value}<span className="ml-1 text-xs font-semibold text-[#bad1dd]">{unit}</span></p><StatusPill status="Good" /></div></div>; }
+function VitalCard({ label, value, unit }: { label: string; value: string; unit: string }) {
+  return (
+    <div className="rounded-xl border border-[#397d91] panel-muted p-4">
+      <p className="text-sm font-medium">{label}</p>
+      <div className="mt-3 flex items-end justify-between gap-2">
+        <p className="min-w-0 whitespace-nowrap text-xl font-extrabold">
+          {value}
+          <span className="ml-1 text-[11px] font-semibold text-[#bad1dd]">{unit}</span>
+        </p>
+        <span className="shrink-0">
+          <StatusPill status="Good" />
+        </span>
+      </div>
+    </div>
+  );
+}
 function EnvironmentCard({ label, value, unit }: { label: string; value: string; unit: string }) { return <div className="rounded-xl border border-[#397d91] p-4"><p className="text-sm">{label}</p><div className="mt-2 flex items-end justify-between gap-2"><p className="text-3xl font-extrabold">{value}<span className="ml-1 text-xs text-[#bad1dd]">{unit}</span></p><StatusPill status="Good" /></div></div>; }
 function StatusRow({ tag, text, muted = false }: { tag: string; text: string; muted?: boolean }) { return <div className="rounded-xl border border-[#397d91] p-4"><span className={`inline-block rounded-full border px-3 py-1 text-xs font-bold ${muted ? 'border-white/70 text-white' : 'border-[#51ce7a] text-[#70df92]'}`}>{tag}</span><p className="mt-3 text-sm leading-6 text-[#d3e7ee]">{text}</p></div>; }
 function FeatureTab({ tab, astronautId, onConsult }: { tab: Tab; astronautId: string; onConsult: () => void }) {
