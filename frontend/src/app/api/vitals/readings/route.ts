@@ -44,6 +44,7 @@ export async function POST(request: Request) {
       astronautId, metric, value: item.value, source,
       ts: typeof item.recorded_at === 'string' ? item.recorded_at : undefined,
     });
+    void row;
     const alert = syncAlertForReading(astronautId, metric, item.value);
     evaluations.push({ astronaut_id: astronautId, metric, value: item.value, level: evaluateVital(metric, item.value), alert });
   }

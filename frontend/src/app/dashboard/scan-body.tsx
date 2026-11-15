@@ -40,8 +40,14 @@ export default function ScanBody({ astronautId }: { astronautId: string }) {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Scan['regions'][number] | null>(null);
 
-  useEffect(() => {
+  // Reset loading when the astronaut changes (render-time adjustment).
+  const [prevAstronaut, setPrevAstronaut] = useState(astronautId);
+  if (astronautId !== prevAstronaut) {
+    setPrevAstronaut(astronautId);
     setLoading(true);
+  }
+
+  useEffect(() => {
     fetch(`/api/scan?astronaut_id=${encodeURIComponent(astronautId)}`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then((d: ScanResponse) => { setScan(d.scan); setHasScan(d.has_scan); })

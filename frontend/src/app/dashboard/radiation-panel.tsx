@@ -58,15 +58,22 @@ export default function RadiationPanel() {
   const [revealed, setRevealed] = useState<string[]>([]);
 
   const member = DEMO_RADIATION.find(m => m.id === selectedId) ?? DEMO_RADIATION[0];
+  const actions = member.actions;
+
+  // Reset the reveal list when the selected member changes (render-time adjustment).
+  const [prevId, setPrevId] = useState(selectedId);
+  if (selectedId !== prevId) {
+    setPrevId(selectedId);
+    setRevealed([]);
+  }
 
   // Stagger the recommended-action reveal for the selected member.
   useEffect(() => {
-    setRevealed([]);
-    const timers = member.actions.map((_, i) => setTimeout(() => {
-      setRevealed(prev => [...prev, member.actions[i]]);
+    const timers = actions.map((_, i) => setTimeout(() => {
+      setRevealed(prev => (prev.includes(actions[i]) ? prev : [...prev, actions[i]]));
     }, 250 * (i + 1)));
     return () => timers.forEach(clearTimeout);
-  }, [selectedId]);
+  }, [actions]);
 
   const style = STATUS_STYLE[member.status];
 

@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { pressSos } from '@/lib/sos';
-import type { SosPhase } from '@/lib/sos';
 import IncidentLog from './incident-log';
 import DailyCheckIn from './daily-check-in';
 import ScanBody from './scan-body';
@@ -48,17 +46,15 @@ export default function Dashboard() {
     fetch('/api/incidents').then(r => r.json()).then(d => { if (Array.isArray(d)) setIncidentCount(d.length); }).catch(() => {});
     const saved = localStorage.getItem('astra-consultation-id');
     if (saved) {
-      setConsultationId(saved);
       fetch(`/api/consultation/history?consultation_id=${encodeURIComponent(saved)}`)
         .then(r => r.ok ? r.json() : Promise.reject())
-        .then(d => { if (Array.isArray(d.turns)) setTurns(d.turns); })
+        .then(d => { if (Array.isArray(d.turns)) { setConsultationId(saved); setTurns(d.turns); } })
         .catch(() => { localStorage.removeItem('astra-consultation-id'); setConsultationId(null); });
     }
   }, []);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [turns, consultOpen, busy]);
   useEffect(() => {
     if (!busy) return;
-    setThinking('Searching the NASA knowledge base');
     const timer = setTimeout(() => setThinking('ASTRA is thinking and preparing a grounded answer'), 900);
     return () => clearTimeout(timer);
   }, [busy]);
@@ -68,6 +64,7 @@ export default function Dashboard() {
     const text = message.trim();
     if (!text || busy) return;
     setMessage(''); setBusy(true); setError('');
+    setThinking('Searching the NASA knowledge base');
     setTurns(t => [...t, { role: 'user', text }]);
     try {
       const r = await fetch('/api/consultation/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ astronaut_id: 'demo-001', message: text, consultation_id: consultationId, vitals: { heart_rate: astronaut.vitals.heartRate, spo2: astronaut.vitals.spo2, temperature: astronaut.vitals.temperature, blood_pressure: astronaut.vitals.bloodPressure } }) });

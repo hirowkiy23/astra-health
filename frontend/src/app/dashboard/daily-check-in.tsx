@@ -176,7 +176,7 @@ export default function DailyCheckIn({ astronautId }: { astronautId: string }) {
         </div>
 
         {!state.weekly_summary ? (
-          <p className="mt-3 text-sm text-[#c1d9e3]">Loading this week's summary…</p>
+          <p className="mt-3 text-sm text-[#c1d9e3]">Loading this week&apos;s summary…</p>
         ) : (
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <SummaryStat label="Check-ins" value={String(state.weekly_summary.checkInCount)} sub="this week" />

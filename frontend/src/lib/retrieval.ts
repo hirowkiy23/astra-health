@@ -84,5 +84,5 @@ export function retrieve(message: string): Reference[] {
   return CORPUS
     .filter(entry => entry.keywords.some(keyword => text.includes(keyword)))
     .slice(0, 2)
-    .map(({ keywords: _keywords, ...reference }) => reference);
+    .map(({ id, title, section, source, url, text: body }) => ({ id, title, section, source, url, text: body }));
 }
