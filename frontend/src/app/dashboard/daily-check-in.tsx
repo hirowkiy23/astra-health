@@ -133,39 +133,41 @@ export default function DailyCheckIn({ astronautId }: { astronautId: string }) {
         <DailyNutrition astronautId={astronautId} />
       </div>
 
-      <section className="panel rounded-2xl p-5">
+      <section className="panel rounded-2xl p-5 lg:col-span-2">
         <h2 className="text-xl font-semibold">Weekly ultrasound scan</h2>
         <p className="mt-2 text-sm leading-6 text-[#c1d9e3]">A scheduled full-body scan informs the 4D body model on the overview. Completing it keeps your health picture current.</p>
 
-        <div className={`mt-5 rounded-xl border p-5 ${state.ultrasound_due ? 'border-[#c29343] bg-[#c29343]/10' : 'border-[#51ce7a] bg-[#51ce7a]/10'}`}>
-          {state.ultrasound_due ? (
-            <>
-              <p className="text-lg font-bold text-[#e7b85f]">Scan due</p>
-              <p className="mt-2 text-sm leading-6 text-[#c1d9e3]">Your weekly ultrasound scan has not been recorded in the last 7 days. Visit the medical bay to complete it.</p>
-            </>
-          ) : (
-            <>
-              <p className="text-lg font-bold text-[#70df92]">Scan up to date</p>
-              <p className="mt-2 text-sm leading-6 text-[#c1d9e3]">Last recorded {state.latest_ultrasound ? new Date(state.latest_ultrasound.created_at).toLocaleDateString() : ''}. Next scan in under a week.</p>
-            </>
-          )}
-        </div>
+        <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-stretch">
+          <div className={`rounded-xl border p-5 ${state.ultrasound_due ? 'border-[#c29343] bg-[#c29343]/10' : 'border-[#51ce7a] bg-[#51ce7a]/10'}`}>
+            {state.ultrasound_due ? (
+              <>
+                <p className="text-lg font-bold text-[#e7b85f]">Scan due</p>
+                <p className="mt-2 text-sm leading-6 text-[#c1d9e3]">Your weekly ultrasound scan has not been recorded in the last 7 days. Visit the medical bay to complete it.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-bold text-[#70df92]">Scan up to date</p>
+                <p className="mt-2 text-sm leading-6 text-[#c1d9e3]">Last recorded {state.latest_ultrasound ? new Date(state.latest_ultrasound.created_at).toLocaleDateString() : ''}. Next scan in under a week.</p>
+              </>
+            )}
+          </div>
 
-        <button
-          onClick={() => {
-            fetch('/api/scan', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ astronaut_id: astronautId }),
-            }).then(r => r.ok ? r.json() : Promise.reject())
-              .then(() => fetch(`/api/daily-logs?astronaut_id=${encodeURIComponent(astronautId)}`).then(r => r.json()))
-              .then(setState)
-              .catch(() => setError('The scan record could not be saved.'));
-          }}
-          className="mt-5 w-full rounded-xl border border-[#398b98] px-5 py-3 font-bold text-[#d0e9f1] transition hover:bg-[#ffffff10]"
-        >
-          Mark scan completed (demo)
-        </button>
+          <button
+            onClick={() => {
+              fetch('/api/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ astronaut_id: astronautId }),
+              }).then(r => r.ok ? r.json() : Promise.reject())
+                .then(() => fetch(`/api/daily-logs?astronaut_id=${encodeURIComponent(astronautId)}`).then(r => r.json()))
+                .then(setState)
+                .catch(() => setError('The scan record could not be saved.'));
+            }}
+            className="rounded-xl bg-[#0876bf] px-8 py-3 font-bold text-white transition hover:bg-[#0a69a8] lg:self-stretch"
+            >
+            Mark scan completed (demo)
+          </button>
+        </div>
         <p className="mt-3 text-xs text-[#9fc0cd]">Simulated action — no real ultrasound device is connected.</p>
       </section>
 
